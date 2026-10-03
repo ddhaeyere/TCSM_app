@@ -6,12 +6,38 @@ import type { ActionState } from "@/components/forms";
 import { requireOrganiser } from "@/lib/auth";
 import { CATEGORY_CHOICES, brusselsInputToIso } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import type { PlayFormat, Sport } from "@/lib/types";
+import { RANKINGS } from "@/lib/rankings";
+import { SERIES_GENDERS } from "@/lib/series";
+import type { PlayFormat, SeriesGender, Sport } from "@/lib/types";
 
 // Reads a category choice such as "padel:doubles"; null when it is not one we offer.
 function readCategoryChoice(value: unknown): [Sport, PlayFormat] | null {
   const choice = CATEGORY_CHOICES.find((c) => c.value === String(value));
   return choice ? (choice.value.split(":") as [Sport, PlayFormat]) : null;
+}
+
+// Reads who may play and the maximum ranking of a series; a string is an error.
+function readSeriesRules(
+  formData: FormData,
+  sport: Sport,
+  format: PlayFormat,
+): { gender: SeriesGender | null; max_ranking: string | null } | string {
+  const genderRaw = String(formData.get("gender") ?? "");
+  const gender = SERIES_GENDERS.find((g) => g.value === genderRaw)?.value ?? null;
+  if (gender === "gemengd" && format !== "doubles") return "Gemengd kan alleen in het dubbelspel.";
+
+  const raw = String(formData.get("max_ranking") ?? "").trim().toUpperCase().replace(/\s*P(TN)?\.?$/, "");
+  if (!raw) return { gender, max_ranking: null };
+  if (sport === "tennis") {
+    const points = Number(raw);
+    if (!Number.isInteger(points) || points < 1)
+      return "Het maximumklassement voor tennis is een aantal punten, bv. 30.";
+    return { gender, max_ranking: String(points) };
+  }
+  const level = raw.startsWith("P") ? raw : `P${raw}`;
+  if (!RANKINGS.padel.includes(level))
+    return `Het maximumklassement voor padel is een niveau: ${RANKINGS.padel.join(", ")}.`;
+  return { gender, max_ranking: level };
 }
 
 function refresh(eventId?: string) {
@@ -68,13 +94,6 @@ export async function createEvent(_: ActionState, formData: FormData): Promise<A
   const fields = readEventFields(formData);
   if (typeof fields === "string") return { error: fields };
 
-  // Categories ticked in the form, e.g. "padel:doubles".
-  const categories = formData
-    .getAll("categories")
-    .map(readCategoryChoice)
-    .filter((choice) => choice !== null);
-  if (categories.length === 0) return { error: "Kies minstens één categorie." };
-
   const supabase = await createClient();
   const { data: event, error } = await supabase
     .from("events")
@@ -82,16 +101,6 @@ export async function createEvent(_: ActionState, formData: FormData): Promise<A
     .select("id")
     .single();
   if (error || !event) return { error: "Evenement aanmaken lukte niet." };
-
-  const { error: catError } = await supabase.from("event_categories").insert(
-    categories.map(([sport, format], position) => ({
-      event_id: event.id,
-      sport,
-      format,
-      position,
-    })),
-  );
-  if (catError) return { error: "Het evenement is aangemaakt, maar de categorieën niet." };
 
   refresh(event.id);
   redirect(`/beheer/evenementen/${event.id}`);
@@ -129,9 +138,11 @@ export async function addCategory(_: ActionState, formData: FormData): Promise<A
   const label = String(formData.get("label") ?? "").trim() || null;
   const maxPlayers = readMaxPlayers(formData.get("max_players"));
 
-  if (!choice) return { error: "Kies een categorie." };
+  if (!choice) return { error: "Kies tennis dubbel, tennis enkel of padel." };
   const [sport, format] = choice;
   if (typeof maxPlayers === "string") return { error: maxPlayers };
+  const rules = readSeriesRules(formData, sport, format);
+  if (typeof rules === "string") return { error: rules };
 
   const supabase = await createClient();
   const { count } = await supabase
@@ -143,10 +154,11 @@ export async function addCategory(_: ActionState, formData: FormData): Promise<A
     sport,
     format,
     label,
+    ...rules,
     max_players: maxPlayers,
     position: count ?? 0,
   });
-  if (error) return { error: "Categorie toevoegen lukte niet." };
+  if (error) return { error: "Reeks toevoegen lukte niet." };
 
   refresh(eventId);
   return {};
@@ -160,10 +172,20 @@ export async function updateCategory(_: ActionState, formData: FormData): Promis
   if (typeof maxPlayers === "string") return { error: maxPlayers };
 
   const supabase = await createClient();
+  const categoryId = String(formData.get("category_id"));
+  const { data: category } = await supabase
+    .from("event_categories")
+    .select("sport, format")
+    .eq("id", categoryId)
+    .single();
+  if (!category) return { error: "Reeks niet gevonden." };
+  const rules = readSeriesRules(formData, category.sport, category.format);
+  if (typeof rules === "string") return { error: rules };
+
   const { error } = await supabase
     .from("event_categories")
-    .update({ label, max_players: maxPlayers })
-    .eq("id", String(formData.get("category_id")));
+    .update({ label, ...rules, max_players: maxPlayers })
+    .eq("id", categoryId);
   if (error) return { error: "Opslaan lukte niet." };
 
   refresh(eventId);

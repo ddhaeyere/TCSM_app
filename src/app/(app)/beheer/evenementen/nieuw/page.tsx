@@ -4,13 +4,9 @@ import { createEvent } from "@/app/actions/events";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Card, PageTitle } from "@/components/ui";
 import { requireOrganiser } from "@/lib/auth";
-import { CATEGORY_CHOICES } from "@/lib/format";
 import { EventFields } from "../event-fields";
 
 export const metadata: Metadata = { title: "Nieuw evenement" };
-
-// Ticked by default: most events are tennis doubles and padel.
-const DEFAULT_CHOICES = ["tennis:doubles", "padel:doubles"];
 
 export default async function NewEventPage() {
   await requireOrganiser();
@@ -24,29 +20,9 @@ export default async function NewEventPage() {
       <Card>
         <ActionForm action={createEvent} className="space-y-6">
           <EventFields />
-          <fieldset>
-            <legend className="text-sm font-medium text-stone-700">Categorieën</legend>
-            <p className="text-xs text-stone-500">
-              Je kan daarna nog categorieën toevoegen, een naam geven of een maximum instellen.
-            </p>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {CATEGORY_CHOICES.map((c) => (
-                <label
-                  key={c.value}
-                  className="flex items-center gap-2 rounded-lg border border-stone-200 p-2 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    name="categories"
-                    value={c.value}
-                    defaultChecked={DEFAULT_CHOICES.includes(c.value)}
-                    className="size-4 accent-club-700"
-                  />
-                  {c.label}
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          <p className="text-sm text-stone-600">
+            Na het aanmaken voeg je de reeksen toe, bijvoorbeeld dubbel dames tot 30 punten.
+          </p>
           <SubmitButton>Evenement aanmaken</SubmitButton>
         </ActionForm>
       </Card>

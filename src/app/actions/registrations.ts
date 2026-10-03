@@ -78,13 +78,13 @@ async function mailPlayers(entryId: string) {
     supabase.rpc("registration_mail_details", { p_entry_id: entryId }),
     supabase
       .from("entries")
-      .select("category:event_categories ( sport, format, label, event:events ( id, title, starts_at ) )")
+      .select("category:event_categories ( sport, format, label, gender, max_ranking, event:events ( id, title, starts_at ) )")
       .eq("id", entryId)
       .single(),
   ]);
   if (!players?.length || !entry) return;
 
-  const category = entry.category as unknown as Pick<Category, "sport" | "format" | "label"> & {
+  const category = entry.category as unknown as Pick<Category, "sport" | "format" | "label" | "gender" | "max_ranking"> & {
     event: { id: string; title: string; starts_at: string };
   };
   const { event } = category;
@@ -108,7 +108,7 @@ async function mailPlayers(entryId: string) {
           `Dag ${p.full_name},`,
           "",
           `Je bent ingeschreven voor ${event.title} op ${formatDateTime(event.starts_at)}, ` +
-            `in de categorie ${categoryLabel(category)}` +
+            `in de reeks ${categoryLabel(category)}` +
             (partner ? `, samen met ${partner}.` : "."),
           p.registered_by_name && !p.is_self ? `${p.registered_by_name} schreef je in.` : "",
           "",

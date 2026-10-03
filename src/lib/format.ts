@@ -9,12 +9,20 @@ export function sportLabel(sport: Sport): string {
   return SPORT_LABELS[sport];
 }
 
-export function categoryLabel(category: Pick<Category, "sport" | "format" | "label">): string {
+// E.g. "Tennis dubbel dames tot 30p" or "Padel gemengd tot P300 · Clubkampioenschap".
+export function categoryLabel(
+  category: Pick<Category, "sport" | "format" | "label" | "gender" | "max_ranking">,
+): string {
   // Padel is always doubles, so it needs no "dubbel".
-  const base =
+  const parts = [
     category.sport === "padel"
       ? SPORT_LABELS.padel
-      : `${SPORT_LABELS[category.sport]} ${FORMAT_LABELS[category.format]}`;
+      : `${SPORT_LABELS[category.sport]} ${FORMAT_LABELS[category.format]}`,
+  ];
+  if (category.gender) parts.push(category.gender);
+  if (category.max_ranking)
+    parts.push(`tot ${category.sport === "tennis" ? `${category.max_ranking}p` : category.max_ranking}`);
+  const base = parts.join(" ");
   return category.label ? `${base} · ${category.label}` : base;
 }
 

@@ -15,6 +15,7 @@ import { Card, Field, PageTitle, inputClass } from "@/components/ui";
 import { getCurrentMember, requireOrganiser } from "@/lib/auth";
 import { groupEntries } from "@/lib/entries";
 import { CATEGORY_CHOICES, categoryLabel } from "@/lib/format";
+import { SERIES_GENDERS, seriesCode } from "@/lib/series";
 import { createClient } from "@/lib/supabase/server";
 import {
   EVENT_SELECT,
@@ -85,72 +86,55 @@ export default async function ManageEventPage({
             )
           );
         })}
+        {categories.length === 0 && (
+          <p className="text-sm text-stone-600">Voeg hieronder eerst de reeksen toe.</p>
+        )}
         {categories.map((category) => (
           <PairCard key={category.id} event={event} category={category} />
         ))}
       </div>
 
-      <h2 className="mb-2 text-lg font-semibold">Categorieën</h2>
+      <h2 className="mb-2 text-lg font-semibold">Reeksen</h2>
       <Card className="mb-6">
         <ul className="divide-y divide-stone-100">
           {categories.map((c) => (
-            <li key={c.id} className="py-3">
+            <li key={c.id} className="py-3 first:pt-0">
               <p className="font-medium">
-                {categoryLabel({ ...c, label: null })}
+                {seriesCode(c) && <span className="mr-2 text-club-700">{seriesCode(c)}</span>}
+                {categoryLabel(c)}
               </p>
-              <div className="mt-2 flex flex-wrap items-end gap-2">
-                <ActionForm
-                  action={updateCategory}
-                  className="flex flex-wrap items-end gap-2"
-                >
+              <ActionForm action={updateCategory} className="mt-2 grid grid-cols-2 items-end gap-2 sm:grid-cols-4">
+                <input type="hidden" name="event_id" value={event.id} />
+                <input type="hidden" name="category_id" value={c.id} />
+                <SeriesFields category={c} />
+                <SubmitButton variant="secondary">Opslaan</SubmitButton>
+              </ActionForm>
+              {c.entry_players.length === 0 ? (
+                <ActionForm action={deleteCategory} className="mt-2">
                   <input type="hidden" name="event_id" value={event.id} />
                   <input type="hidden" name="category_id" value={c.id} />
-                  <Field label="Extra naam">
-                    <input
-                      name="label"
-                      defaultValue={c.label ?? ""}
-                      placeholder="Bv. Gemengd"
-                      className={`${inputClass} w-36`}
-                    />
-                  </Field>
-                  <Field label="Max. spelers">
-                    <input
-                      name="max_players"
-                      type="number"
-                      min={1}
-                      defaultValue={c.max_players ?? ""}
-                      className={`${inputClass} w-24`}
-                    />
-                  </Field>
-                  <SubmitButton variant="secondary">Opslaan</SubmitButton>
+                  <SubmitButton variant="link" confirm="Deze reeks verwijderen?">
+                    Reeks verwijderen
+                  </SubmitButton>
                 </ActionForm>
-                {c.entry_players.length === 0 ? (
-                  <ActionForm action={deleteCategory}>
-                    <input type="hidden" name="event_id" value={event.id} />
-                    <input type="hidden" name="category_id" value={c.id} />
-                    <SubmitButton
-                      variant="danger"
-                      confirm="Deze categorie verwijderen?"
-                    >
-                      Verwijderen
-                    </SubmitButton>
-                  </ActionForm>
-                ) : (
-                  <span className="pb-2 text-xs text-stone-500">
-                    Heeft inschrijvingen, kan niet verwijderd worden
-                  </span>
-                )}
-              </div>
+              ) : (
+                <p className="mt-2 text-xs text-stone-500">
+                  Heeft inschrijvingen, kan niet verwijderd worden. Een nieuwe regel geldt alleen
+                  voor nieuwe inschrijvingen.
+                </p>
+              )}
             </li>
           ))}
         </ul>
         <ActionForm
           action={addCategory}
-          className="mt-3 flex flex-wrap items-end gap-2 border-t border-stone-100 pt-3"
+          className={`grid grid-cols-2 items-end gap-2 sm:grid-cols-4 ${
+            categories.length > 0 ? "mt-3 border-t border-stone-100 pt-3" : ""
+          }`}
         >
           <input type="hidden" name="event_id" value={event.id} />
-          <Field label="Categorie">
-            <select name="category" className={`${inputClass} w-36`}>
+          <Field label="Sport">
+            <select name="category" className={inputClass}>
               {CATEGORY_CHOICES.map((c) => (
                 <option key={c.value} value={c.value}>
                   {c.label}
@@ -158,22 +142,8 @@ export default async function ManageEventPage({
               ))}
             </select>
           </Field>
-          <Field label="Extra naam">
-            <input
-              name="label"
-              placeholder="Optioneel"
-              className={`${inputClass} w-36`}
-            />
-          </Field>
-          <Field label="Max. spelers">
-            <input
-              name="max_players"
-              type="number"
-              min={1}
-              className={`${inputClass} w-24`}
-            />
-          </Field>
-          <SubmitButton>Categorie toevoegen</SubmitButton>
+          <SeriesFields />
+          <SubmitButton>Reeks toevoegen</SubmitButton>
         </ActionForm>
       </Card>
 
@@ -195,6 +165,49 @@ export default async function ManageEventPage({
           Evenement verwijderen
         </SubmitButton>
       </ActionForm>
+    </>
+  );
+}
+
+// Who may play, the maximum ranking, an optional name and a player limit.
+function SeriesFields({ category }: { category?: Category }) {
+  return (
+    <>
+      <Field label="Voor">
+        <select name="gender" defaultValue={category?.gender ?? ""} className={inputClass}>
+          <option value="">Iedereen</option>
+          {SERIES_GENDERS.map((g) => (
+            <option key={g.value} value={g.value}>
+              {g.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Max. klassement">
+        <input
+          name="max_ranking"
+          defaultValue={category?.max_ranking ?? ""}
+          placeholder="Bv. 30 of P300"
+          className={inputClass}
+        />
+      </Field>
+      <Field label="Naam">
+        <input
+          name="label"
+          defaultValue={category?.label ?? ""}
+          placeholder="Optioneel"
+          className={inputClass}
+        />
+      </Field>
+      <Field label="Max. spelers">
+        <input
+          name="max_players"
+          type="number"
+          min={1}
+          defaultValue={category?.max_players ?? ""}
+          className={inputClass}
+        />
+      </Field>
     </>
   );
 }

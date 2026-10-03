@@ -24,12 +24,12 @@ export function ActionForm({
     <form action={formAction} className={className}>
       {children}
       {state.error && (
-        <p role="alert" className="mt-2 text-sm text-red-700">
+        <p role="alert" className="col-span-full mt-2 basis-full text-sm text-red-700">
           {state.error}
         </p>
       )}
       {state.message && (
-        <p role="status" className="mt-2 text-sm text-club-700">
+        <p role="status" className="col-span-full mt-2 basis-full text-sm text-club-700">
           {state.message}
         </p>
       )}
