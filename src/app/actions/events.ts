@@ -4,12 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { ActionState } from "@/components/forms";
 import { requireOrganiser } from "@/lib/auth";
-import { brusselsInputToIso } from "@/lib/format";
+import { CATEGORY_CHOICES, brusselsInputToIso } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import type { PlayFormat, Sport } from "@/lib/types";
 
-const SPORTS: Sport[] = ["tennis", "padel"];
-const FORMATS: PlayFormat[] = ["singles", "doubles"];
+// Reads a category choice such as "padel:doubles"; null when it is not one we offer.
+function readCategoryChoice(value: unknown): [Sport, PlayFormat] | null {
+  const choice = CATEGORY_CHOICES.find((c) => c.value === String(value));
+  return choice ? (choice.value.split(":") as [Sport, PlayFormat]) : null;
+}
 
 function refresh(eventId?: string) {
   revalidatePath("/");
@@ -68,9 +71,8 @@ export async function createEvent(_: ActionState, formData: FormData): Promise<A
   // Categories ticked in the form, e.g. "padel:doubles".
   const categories = formData
     .getAll("categories")
-    .map(String)
-    .map((value) => value.split(":") as [Sport, PlayFormat])
-    .filter(([sport, format]) => SPORTS.includes(sport) && FORMATS.includes(format));
+    .map(readCategoryChoice)
+    .filter((choice) => choice !== null);
   if (categories.length === 0) return { error: "Kies minstens één categorie." };
 
   const supabase = await createClient();
@@ -123,12 +125,12 @@ export async function deleteEvent(_: ActionState, formData: FormData): Promise<A
 export async function addCategory(_: ActionState, formData: FormData): Promise<ActionState> {
   await requireOrganiser();
   const eventId = String(formData.get("event_id"));
-  const sport = String(formData.get("sport")) as Sport;
-  const format = String(formData.get("format")) as PlayFormat;
+  const choice = readCategoryChoice(formData.get("category"));
   const label = String(formData.get("label") ?? "").trim() || null;
   const maxPlayers = readMaxPlayers(formData.get("max_players"));
 
-  if (!SPORTS.includes(sport) || !FORMATS.includes(format)) return { error: "Kies sport en type." };
+  if (!choice) return { error: "Kies een categorie." };
+  const [sport, format] = choice;
   if (typeof maxPlayers === "string") return { error: maxPlayers };
 
   const supabase = await createClient();
