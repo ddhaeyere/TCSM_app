@@ -41,6 +41,8 @@ export default async function EventPage({ params }: PageProps<"/evenementen/[id]
 
   const event = data as unknown as ClubEvent;
   const open = isRegistrationOpen(event);
+  // Admins keep registering members after the deadline.
+  const canRegister = open || isOrganiser(profile);
   const categories = [...event.event_categories].sort((a, b) => a.position - b.position);
 
   return (
@@ -58,7 +60,9 @@ export default async function EventPage({ params }: PageProps<"/evenementen/[id]
         <p className="mt-1 text-sm text-stone-600">
           {open
             ? `Inschrijven kan tot ${formatDateTime(registrationClosesAt(event).toISOString())}.`
-            : "De inschrijvingen zijn gesloten."}
+            : isOrganiser(profile)
+              ? "De inschrijvingen zijn gesloten. Als beheerder kan je nog leden inschrijven."
+              : "De inschrijvingen zijn gesloten."}
         </p>
         {event.description && (
           <p className="mt-3 whitespace-pre-line text-stone-800">{event.description}</p>
@@ -82,7 +86,7 @@ export default async function EventPage({ params }: PageProps<"/evenementen/[id]
             profile={profile}
             me={me}
             members={(members ?? []) as ClubMember[]}
-            open={open}
+            open={canRegister}
           />
         ))}
       </div>

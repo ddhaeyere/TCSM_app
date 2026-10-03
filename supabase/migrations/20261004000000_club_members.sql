@@ -190,6 +190,27 @@ begin
 end;
 $$;
 
+-- The category to register in. Organisers may still register members after
+-- the deadline, for instance when they hear about interest elsewhere.
+create function public.category_for_registration(p_category_id uuid)
+returns public.event_categories
+language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  cat public.event_categories;
+begin
+  if not public.is_organiser() then
+    return public.assert_registration_open(p_category_id);
+  end if;
+
+  select * into cat from public.event_categories where id = p_category_id;
+  if not found then
+    raise exception 'Categorie niet gevonden';
+  end if;
+  return cat;
+end;
+$$;
+
 -- Register a member, alone or with a partner (doubles). Registering alone
 -- for doubles means "looking for a partner". Any approved account can
 -- register any member of the club.
@@ -210,7 +231,7 @@ begin
     raise exception 'Je account is nog niet goedgekeurd';
   end if;
 
-  cat := public.assert_registration_open(p_category_id);
+  cat := public.category_for_registration(p_category_id);
 
   if p_partner_id is not null then
     if cat.format = 'singles' then
@@ -269,7 +290,7 @@ begin
     raise exception 'Inschrijving niet gevonden';
   end if;
 
-  cat := public.assert_registration_open(category);
+  cat := public.category_for_registration(category);
   if cat.format <> 'doubles' or players <> 1 then
     raise exception 'Deze speler zoekt geen partner';
   end if;
@@ -580,6 +601,7 @@ to authenticated;
 
 revoke execute on function
   public.link_accounts_to_members(),
+  public.category_for_registration(uuid),
   public.member_ranking(uuid, public.event_categories),
   public.assert_not_registered(uuid, uuid)
 from authenticated;
