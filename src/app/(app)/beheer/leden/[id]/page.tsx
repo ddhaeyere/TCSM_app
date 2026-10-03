@@ -1,0 +1,79 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { deleteClubMember, updateClubMember } from "@/app/actions/members";
+import { ActionForm, SubmitButton } from "@/components/forms";
+import { Card, Field, PageTitle, RankingField, inputClass } from "@/components/ui";
+import { requireAdmin } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import type { ClubMember } from "@/lib/types";
+
+export const metadata: Metadata = { title: "Lid" };
+
+export default async function EditMemberPage({ params }: PageProps<"/beheer/leden/[id]">) {
+  const { id } = await params;
+  await requireAdmin();
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("admin_list_members");
+  const member = ((data ?? []) as (ClubMember & { email: string | null })[]).find((m) => m.id === id);
+  if (!member) notFound();
+
+  return (
+    <>
+      <Link href="/beheer/leden" className="text-sm text-club-700 underline">
+        ← Ledenlijst
+      </Link>
+      <PageTitle sub={member.profile_id ? "Heeft een account in de app." : "Heeft nog geen account."}>
+        {member.full_name}
+      </PageTitle>
+
+      <Card className="mb-6">
+        <ActionForm action={updateClubMember} className="space-y-4">
+          <input type="hidden" name="member_id" value={member.id} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Naam">
+              <input name="last_name" defaultValue={member.last_name} required className={inputClass} />
+            </Field>
+            <Field label="Voornaam">
+              <input name="first_name" defaultValue={member.first_name} required className={inputClass} />
+            </Field>
+            <Field label="Geslacht">
+              <select name="gender" defaultValue={member.gender ?? ""} className={inputClass}>
+                <option value="">Niet ingevuld</option>
+                <option value="M">Man</option>
+                <option value="V">Vrouw</option>
+              </select>
+            </Field>
+            <Field label="E-mailadres" hint="Hiermee wordt het lid aan een account gekoppeld.">
+              <input name="email" type="email" defaultValue={member.email ?? ""} className={inputClass} />
+            </Field>
+            <RankingField
+              sport="tennis"
+              name="tennis_singles_ranking"
+              label="Tennis enkel"
+              value={member.tennis_singles_ranking}
+            />
+            <RankingField
+              sport="tennis"
+              name="tennis_doubles_ranking"
+              label="Tennis dubbel"
+              value={member.tennis_doubles_ranking}
+            />
+            <RankingField sport="padel" name="padel_ranking" label="Padel" value={member.padel_ranking} />
+          </div>
+          <SubmitButton>Opslaan</SubmitButton>
+        </ActionForm>
+      </Card>
+
+      <ActionForm action={deleteClubMember}>
+        <input type="hidden" name="member_id" value={member.id} />
+        <SubmitButton
+          variant="danger"
+          confirm={`${member.full_name} uit de ledenlijst verwijderen? Ook de inschrijvingen van dit lid verdwijnen.`}
+        >
+          Lid verwijderen
+        </SubmitButton>
+      </ActionForm>
+    </>
+  );
+}

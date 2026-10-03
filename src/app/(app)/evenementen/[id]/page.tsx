@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  registerForCategory,
-  respondToInvitation,
-  withdrawRegistration,
-} from "@/app/actions/registrations";
+import { addPartner, registerForCategory, withdrawRegistration } from "@/app/actions/registrations";
 import { ActionForm, SubmitButton } from "@/components/forms";
-import { Badge, Card, Field, RankingSelect, inputClass } from "@/components/ui";
-import { isOrganiser, requireApprovedProfile } from "@/lib/auth";
-import { confirmedPlayers, groupEntries, placesLeft, type Entry } from "@/lib/entries";
+import { Card, Field, inputClass } from "@/components/ui";
+import { getCurrentMember, isOrganiser, requireApprovedProfile } from "@/lib/auth";
+import { groupEntries, placesLeft, type Entry } from "@/lib/entries";
 import {
   categoryLabel,
   plural,
@@ -17,19 +13,29 @@ import {
   isRegistrationOpen,
   registrationClosesAt,
 } from "@/lib/format";
+import { memberRanking } from "@/lib/rankings";
 import { createClient } from "@/lib/supabase/server";
-import { EVENT_SELECT, type Category, type ClubEvent, type Profile } from "@/lib/types";
+import {
+  EVENT_SELECT,
+  MEMBER_COLUMNS,
+  type Category,
+  type ClubEvent,
+  type ClubMember,
+  type EntryPlayer,
+  type Profile,
+} from "@/lib/types";
 
 export const metadata: Metadata = { title: "Evenement" };
 
 export default async function EventPage({ params }: PageProps<"/evenementen/[id]">) {
   const { id } = await params;
   const profile = await requireApprovedProfile();
+  const me = await getCurrentMember();
   const supabase = await createClient();
 
   const [{ data }, { data: members }] = await Promise.all([
     supabase.from("events").select(EVENT_SELECT).eq("id", id).maybeSingle(),
-    supabase.from("profiles").select("id, full_name").eq("status", "approved").order("full_name"),
+    supabase.from("club_members").select(MEMBER_COLUMNS).order("last_name").order("first_name"),
   ]);
   if (!data) notFound();
 
@@ -74,7 +80,8 @@ export default async function EventPage({ params }: PageProps<"/evenementen/[id]
             event={event}
             category={category}
             profile={profile}
-            members={(members ?? []) as { id: string; full_name: string }[]}
+            me={me}
+            members={(members ?? []) as ClubMember[]}
             open={open}
           />
         ))}
@@ -83,128 +90,119 @@ export default async function EventPage({ params }: PageProps<"/evenementen/[id]
   );
 }
 
-function playerName(entry: Entry, index: number): string {
-  return entry.players.at(index)?.player?.full_name ?? "Onbekend";
-}
-
-function withRanking(entry: Entry, index: number): string {
-  const p = entry.players.at(index);
-  if (!p) return "";
-  return p.ranking ? `${playerName(entry, index)} (${p.ranking})` : playerName(entry, index);
+function withRanking(player: EntryPlayer | undefined): string {
+  if (!player) return "";
+  const name = player.member?.full_name ?? "Onbekend";
+  return player.ranking ? `${name} (${player.ranking})` : name;
 }
 
 function CategoryCard({
   event,
   category,
   profile,
+  me,
   members,
   open,
 }: {
   event: ClubEvent;
   category: Category;
   profile: Profile;
-  members: { id: string; full_name: string }[];
+  me: ClubMember | null;
+  members: ClubMember[];
   open: boolean;
 }) {
   const entries = groupEntries(category);
-  const mine = entries.find((e) => e.players.some((p) => p.profile_id === profile.id));
-  const myPlayer = mine?.players.find((p) => p.profile_id === profile.id);
   const left = placesLeft(category);
-  const count = confirmedPlayers(category).length;
   const doubles = category.format === "doubles";
-  const lastRanking = category.sport === "tennis" ? profile.tennis_ranking : profile.padel_ranking;
+  const mine = me && entries.find((e) => e.players.some((p) => p.member_id === me.id));
 
-  const teams = entries.filter((e) => e.kind === "team" || e.kind === "awaiting");
+  const teams = entries.filter((e) => e.kind === "team");
   const looking = entries.filter((e) => e.kind === "looking");
   const singles = entries.filter((e) => e.kind === "single");
 
-  const taken = new Set(category.entry_players.map((p) => p.profile_id));
-  const partnerOptions = members.filter((m) => !taken.has(m.id));
+  // Members who are not in this category yet, with their ranking for it.
+  const taken = new Set(category.entry_players.map((p) => p.member_id));
+  const available = members.filter((m) => !taken.has(m.id));
+  const option = (m: ClubMember) => {
+    const ranking = memberRanking(m, category.sport, category.format);
+    return (
+      <option key={m.id} value={m.id}>
+        {ranking ? `${m.full_name} (${ranking})` : m.full_name}
+      </option>
+    );
+  };
+
+  // Who may unregister a player: the player, whoever registered them, and organisers.
+  const canWithdraw = (p: EntryPlayer) =>
+    open &&
+    (isOrganiser(profile) || p.registered_by === profile.id || (me !== null && p.member_id === me.id));
+
+  const playerLine = (p: EntryPlayer | undefined, entry: Entry) =>
+    p && (
+      <span className="inline-flex items-center gap-1">
+        {withRanking(p)}
+        {canWithdraw(p) && (
+          <ActionForm action={withdrawRegistration} className="inline">
+            <input type="hidden" name="event_id" value={event.id} />
+            <input type="hidden" name="entry_id" value={entry.id} />
+            <input type="hidden" name="member_id" value={p.member_id} />
+            <SubmitButton
+              variant="link"
+              confirm={`${p.member?.full_name ?? "Deze speler"} uitschrijven?`}
+            >
+              uitschrijven
+            </SubmitButton>
+          </ActionForm>
+        )}
+      </span>
+    );
 
   return (
     <Card>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold">{categoryLabel(category)}</h2>
         <span className="text-sm text-stone-600">
-          {plural(count, "speler", "spelers")}
-          {doubles && ` · ${plural(entries.filter((e) => e.kind === "team").length, "team", "teams")}`}
+          {plural(category.entry_players.length, "speler", "spelers")}
+          {doubles && ` · ${plural(teams.length, "team", "teams")}`}
           {left !== null && ` · ${left === 0 ? "volzet" : `nog ${left} plaatsen`}`}
         </span>
       </div>
 
-      {/* The member's own registration */}
-      {mine && myPlayer && (
-        <div className="mt-3 rounded-lg bg-club-50 p-3 text-sm text-club-900">
-          {!myPlayer.confirmed ? (
-            <>
-              <p>
-                <strong>{playerName(mine, 0)}</strong> wil met jou spelen.
-              </p>
-              {open && (
-                <ActionForm action={respondToInvitation} className="mt-2 flex flex-wrap items-end gap-2">
-                  <input type="hidden" name="entry_id" value={mine.id} />
-                  <input type="hidden" name="event_id" value={event.id} />
-                  <input type="hidden" name="sport" value={category.sport} />
-                  <div className="min-w-40 flex-1">
-                    <RankingSelect sport={category.sport} defaultValue={lastRanking} />
-                  </div>
-                  <SubmitButton name="answer" value="accept">
-                    Ik speel mee
-                  </SubmitButton>
-                  <SubmitButton name="answer" value="decline" variant="secondary" formNoValidate>
-                    Nee, bedankt
-                  </SubmitButton>
-                </ActionForm>
-              )}
-            </>
-          ) : (
-            <>
-              <p>
-                <strong>Je bent ingeschreven</strong>
-                {myPlayer.ranking && ` als ${myPlayer.ranking}`}
-                {mine.kind === "team" &&
-                  ` samen met ${mine.players.find((p) => p.profile_id !== profile.id)?.player?.full_name}`}
-                {mine.kind === "awaiting" &&
-                  `. ${mine.players.find((p) => !p.confirmed)?.player?.full_name} moet nog bevestigen`}
-                {mine.kind === "looking" && ". Je zoekt nog een partner"}.
-              </p>
-              {open && (
-                <ActionForm action={withdrawRegistration} className="mt-2">
-                  <input type="hidden" name="entry_id" value={mine.id} />
-                  <input type="hidden" name="event_id" value={event.id} />
-                  <SubmitButton
-                    variant="danger"
-                    confirm="Wil je je echt uitschrijven?"
-                  >
-                    Uitschrijven
-                  </SubmitButton>
-                </ActionForm>
-              )}
-            </>
-          )}
-        </div>
+      {mine && (
+        <p className="mt-3 rounded-lg bg-club-50 p-3 text-sm text-club-900">
+          <strong>Je bent ingeschreven</strong>
+          {mine.kind === "team" &&
+            ` samen met ${mine.players.find((p) => p.member_id !== me?.id)?.member?.full_name}`}
+          {mine.kind === "looking" && " en je zoekt nog een partner"}.
+        </p>
       )}
 
-      {/* Registration form */}
-      {!mine && open && left !== 0 && (
-        <ActionForm action={registerForCategory} className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      {/* Registration form: yourself or any other member */}
+      {open && left !== 0 && available.length > 0 && (
+        <ActionForm
+          action={registerForCategory}
+          className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+        >
           <input type="hidden" name="event_id" value={event.id} />
           <input type="hidden" name="category_id" value={category.id} />
-          <input type="hidden" name="sport" value={category.sport} />
-          <Field label="Je klassement">
-            <RankingSelect sport={category.sport} defaultValue={lastRanking} />
+          <Field label="Speler">
+            <select
+              name="member_id"
+              defaultValue={me && !mine ? me.id : ""}
+              required
+              className={inputClass}
+            >
+              <option value="" disabled>
+                Kies een speler
+              </option>
+              {available.map(option)}
+            </select>
           </Field>
           {doubles ? (
             <Field label="Partner">
               <select name="partner_id" defaultValue="" className={inputClass}>
-                <option value="">Ik zoek nog een partner</option>
-                {partnerOptions
-                  .filter((m) => m.id !== profile.id)
-                  .map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.full_name}
-                    </option>
-                  ))}
+                <option value="">Zoekt nog een partner</option>
+                {available.map(option)}
               </select>
             </Field>
           ) : (
@@ -222,7 +220,7 @@ function CategoryCard({
           {singles.length > 0 && (
             <ol className="list-inside list-decimal space-y-1">
               {singles.map((e) => (
-                <li key={e.id}>{withRanking(e, 0)}</li>
+                <li key={e.id}>{playerLine(e.players[0], e)}</li>
               ))}
             </ol>
           )}
@@ -231,11 +229,10 @@ function CategoryCard({
               <h3 className="mb-1 font-medium text-stone-700">Teams</h3>
               <ul className="space-y-1">
                 {teams.map((e) => (
-                  <li key={e.id} className="flex flex-wrap items-center gap-2">
-                    <span>
-                      {withRanking(e, 0)} & {e.kind === "team" ? withRanking(e, 1) : playerName(e, 1)}
-                    </span>
-                    {e.kind === "awaiting" && <Badge tone="amber">wacht op bevestiging</Badge>}
+                  <li key={e.id} className="flex flex-wrap items-center gap-x-2">
+                    {playerLine(e.players[0], e)}
+                    <span>&</span>
+                    {playerLine(e.players[1], e)}
                   </li>
                 ))}
               </ul>
@@ -244,10 +241,29 @@ function CategoryCard({
           {looking.length > 0 && (
             <div>
               <h3 className="mb-1 font-medium text-stone-700">Zoekt nog een partner</h3>
-              <ul className="flex flex-wrap gap-2">
+              <ul className="space-y-2">
                 {looking.map((e) => (
-                  <li key={e.id}>
-                    <Badge tone="amber">{withRanking(e, 0)}</Badge>
+                  <li key={e.id} className="rounded-lg bg-amber-50 p-2">
+                    {playerLine(e.players[0], e)}
+                    {open && available.length > 0 && (
+                      <ActionForm action={addPartner} className="mt-1 flex flex-wrap items-center gap-2">
+                        <input type="hidden" name="event_id" value={event.id} />
+                        <input type="hidden" name="entry_id" value={e.id} />
+                        <select
+                          name="member_id"
+                          defaultValue=""
+                          required
+                          aria-label="Partner"
+                          className={`${inputClass} mt-0 w-auto min-w-48 flex-1 py-1.5 text-sm`}
+                        >
+                          <option value="" disabled>
+                            Kies een partner
+                          </option>
+                          {available.map(option)}
+                        </select>
+                        <SubmitButton variant="secondary">Partner toevoegen</SubmitButton>
+                      </ActionForm>
+                    )}
                   </li>
                 ))}
               </ul>

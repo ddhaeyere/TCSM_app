@@ -11,7 +11,7 @@ export default function SignupPage() {
     <Card>
       <h1 className="text-xl font-bold">Account aanmaken</h1>
       <p className="mt-1 mb-4 text-sm text-stone-600">
-        Na je registratie keurt een beheerder van de club je account goed.
+        Gebruik het e-mailadres dat de club van je heeft, dan kan je meteen aan de slag. Anders keurt een beheerder je account eerst goed.
       </p>
       <ActionForm action={signup} className="space-y-4">
         <Field label="Voor- en achternaam">

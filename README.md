@@ -8,18 +8,22 @@ screen. Plan and decisions: [TCSM club app plan](https://claude.ai/code/artifact
 
 ## What it does (phase 1)
 
-- **Accounts**: members sign up with name, email and password. An admin approves
-  each account; until then the member only sees a "waiting for approval" page.
-  The very first account that signs up becomes an approved admin automatically.
-- **Roles**: member, organiser (manages events), admin (also approves accounts
-  and assigns roles).
+- **Member list**: admins import the club's member list (pasted from Excel or
+  as a CSV file) with names, gender, email and rankings for tennis singles,
+  tennis doubles and padel. Registrations point to members of this list.
+- **Accounts**: members sign up with name, email and password. An account whose
+  email is on the member list is approved at once and linked to that member;
+  other accounts wait for an admin. The very first account becomes an admin.
+- **Roles**: member (registers) and admin (manages events, the member list and
+  accounts). The database also knows an "organiser" role that may manage events.
 - **Events**: an organiser creates an event with one or more categories, each a
   sport (tennis or padel) and a format (singles or doubles), optionally with an
   extra name ("Gemengd") and a maximum number of players.
-- **Registrations**: members register per category with their current ranking,
-  pre-filled with the one they used last time. For doubles they pick a partner,
-  who has to confirm with their own ranking, or register alone as "looking for a
-  partner". Organisers pair up members who are looking for a partner.
+- **Registrations**: anyone with an account registers themselves or any other
+  member, per category; doubles with a partner or alone as "looking for a
+  partner", and anyone can add a partner later. A member can be in a category
+  only once. The ranking comes from the member list and is kept with the
+  registration. Every registered member with an email address gets a mail.
 - **Motivation**: the event list shows how many players and who already joined.
 
 ## Stack
@@ -42,7 +46,10 @@ screen. Plan and decisions: [TCSM club app plan](https://claude.ai/code/artifact
    Supabase under Project Settings → API Keys:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-4. **First admin**: sign up yourself right after the first deploy. The first
+4. **Mail** (optional): create a [Resend](https://resend.com) account, verify the
+   club's domain and add `RESEND_API_KEY` and `MAIL_FROM` in Vercel. Addresses
+   ending in `@example.com` never get mail.
+5. **First admin**: sign up yourself right after the first deploy. The first
    account becomes admin; approve everyone else under Beheer → Leden.
 
 Note: free Supabase projects pause after a week without any activity; a paused

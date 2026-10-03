@@ -8,7 +8,7 @@ import type { AccountStatus, UserRole } from "@/lib/types";
 const STATUSES: AccountStatus[] = ["pending", "approved", "rejected"];
 const ROLES: UserRole[] = ["member", "organiser", "admin"];
 
-export async function updateMember(_: ActionState, formData: FormData): Promise<ActionState> {
+export async function updateAccount(_: ActionState, formData: FormData): Promise<ActionState> {
   const status = String(formData.get("status") ?? "") as AccountStatus;
   const role = String(formData.get("role") ?? "") as UserRole;
 
@@ -20,7 +20,7 @@ export async function updateMember(_: ActionState, formData: FormData): Promise<
   });
   if (error) return { error: error.message };
 
-  revalidatePath("/beheer/leden");
+  revalidatePath("/beheer/accounts");
   revalidatePath("/beheer");
   return {};
 }
