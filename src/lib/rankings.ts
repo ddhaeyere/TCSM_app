@@ -3,26 +3,8 @@ import type { Sport } from "./types";
 // Official rankings of Tennis en Padel Vlaanderen, lowest first.
 // Adjust these lists when the federation changes its rankings.
 export const RANKINGS: Record<Sport, string[]> = {
-  tennis: [
-    "C+30",
-    "C+15/5",
-    "C+15/4",
-    "C+15/3",
-    "C+15/2",
-    "C+15/1",
-    "C+15",
-    "B+4/6",
-    "B+2/6",
-    "B0",
-    "B-2/6",
-    "B-4/6",
-    "B-15",
-    "B-15/1",
-    "B-15/2",
-    "B-15/4",
-    "A nationaal",
-    "A internationaal",
-  ],
+  // Tennis uses points: 3, 5, then steps of 5 up to 110.
+  tennis: ["3", ...Array.from({ length: 22 }, (_, i) => String((i + 1) * 5))],
   padel: ["P50", "P100", "P200", "P300", "P400", "P500", "P700", "P1000"],
 };
 
