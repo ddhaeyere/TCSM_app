@@ -213,17 +213,3 @@ export async function splitEntry(_: ActionState, formData: FormData): Promise<Ac
   refresh(eventId);
   return {};
 }
-
-export async function removePlayer(_: ActionState, formData: FormData): Promise<ActionState> {
-  const eventId = String(formData.get("event_id"));
-  const supabase = await createClient();
-  // Organisers may unregister anyone, also after the deadline.
-  const { error } = await supabase.rpc("withdraw_registration", {
-    p_entry_id: String(formData.get("entry_id")),
-    p_member_id: String(formData.get("member_id")),
-  });
-  if (error) return { error: error.message };
-
-  refresh(eventId);
-  return {};
-}

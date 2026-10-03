@@ -6,31 +6,49 @@ import {
   deleteCategory,
   deleteEvent,
   pairEntries,
-  removePlayer,
-  splitEntry,
   updateCategory,
   updateEvent,
 } from "@/app/actions/events";
+import { EntriesTable, SPORTS } from "@/components/entries-table";
 import { ActionForm, SubmitButton } from "@/components/forms";
-import { Badge, Card, Field, PageTitle, inputClass } from "@/components/ui";
-import { requireOrganiser } from "@/lib/auth";
+import { Card, Field, PageTitle, inputClass } from "@/components/ui";
+import { getCurrentMember, requireOrganiser } from "@/lib/auth";
 import { groupEntries } from "@/lib/entries";
-import { CATEGORY_CHOICES, categoryLabel, plural } from "@/lib/format";
+import { CATEGORY_CHOICES, categoryLabel } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { EVENT_SELECT, type Category, type ClubEvent } from "@/lib/types";
+import {
+  EVENT_SELECT,
+  MEMBER_COLUMNS,
+  type Category,
+  type ClubEvent,
+  type ClubMember,
+} from "@/lib/types";
 import { EventFields } from "../event-fields";
 
 export const metadata: Metadata = { title: "Evenement beheren" };
 
-export default async function ManageEventPage({ params }: PageProps<"/beheer/evenementen/[id]">) {
+export default async function ManageEventPage({
+  params,
+}: PageProps<"/beheer/evenementen/[id]">) {
   const { id } = await params;
-  await requireOrganiser();
+  const profile = await requireOrganiser();
+  const me = await getCurrentMember();
   const supabase = await createClient();
 
-  const { data } = await supabase.from("events").select(EVENT_SELECT).eq("id", id).maybeSingle();
+  const [{ data }, { data: memberRows }] = await Promise.all([
+    supabase.from("events").select(EVENT_SELECT).eq("id", id).maybeSingle(),
+    supabase
+      .from("club_members")
+      .select(MEMBER_COLUMNS)
+      .order("last_name")
+      .order("first_name"),
+  ]);
   if (!data) notFound();
   const event = data as unknown as ClubEvent;
-  const categories = [...event.event_categories].sort((a, b) => a.position - b.position);
+  const members = (memberRows ?? []) as ClubMember[];
+  const categories = [...event.event_categories].sort(
+    (a, b) => a.position - b.position,
+  );
 
   return (
     <>
@@ -38,7 +56,10 @@ export default async function ManageEventPage({ params }: PageProps<"/beheer/eve
         <Link href="/beheer" className="text-club-700 underline">
           ← Beheer
         </Link>
-        <Link href={`/evenementen/${event.id}`} className="text-club-700 underline">
+        <Link
+          href={`/evenementen/${event.id}`}
+          className="text-club-700 underline"
+        >
           Bekijk als lid
         </Link>
       </div>
@@ -46,8 +67,26 @@ export default async function ManageEventPage({ params }: PageProps<"/beheer/eve
 
       <h2 className="mb-2 text-lg font-semibold">Inschrijvingen</h2>
       <div className="mb-6 space-y-4">
+        {SPORTS.map((sport) => {
+          const ofSport = categories.filter((c) => c.sport === sport);
+          return (
+            ofSport.length > 0 && (
+              <EntriesTable
+                key={sport}
+                sport={sport}
+                event={event}
+                categories={ofSport}
+                profile={profile}
+                me={me}
+                members={members}
+                open
+                manage
+              />
+            )
+          );
+        })}
         {categories.map((category) => (
-          <RegistrationsCard key={category.id} event={event} category={category} />
+          <PairCard key={category.id} event={event} category={category} />
         ))}
       </div>
 
@@ -56,9 +95,14 @@ export default async function ManageEventPage({ params }: PageProps<"/beheer/eve
         <ul className="divide-y divide-stone-100">
           {categories.map((c) => (
             <li key={c.id} className="py-3">
-              <p className="font-medium">{categoryLabel({ ...c, label: null })}</p>
+              <p className="font-medium">
+                {categoryLabel({ ...c, label: null })}
+              </p>
               <div className="mt-2 flex flex-wrap items-end gap-2">
-                <ActionForm action={updateCategory} className="flex flex-wrap items-end gap-2">
+                <ActionForm
+                  action={updateCategory}
+                  className="flex flex-wrap items-end gap-2"
+                >
                   <input type="hidden" name="event_id" value={event.id} />
                   <input type="hidden" name="category_id" value={c.id} />
                   <Field label="Extra naam">
@@ -84,7 +128,10 @@ export default async function ManageEventPage({ params }: PageProps<"/beheer/eve
                   <ActionForm action={deleteCategory}>
                     <input type="hidden" name="event_id" value={event.id} />
                     <input type="hidden" name="category_id" value={c.id} />
-                    <SubmitButton variant="danger" confirm="Deze categorie verwijderen?">
+                    <SubmitButton
+                      variant="danger"
+                      confirm="Deze categorie verwijderen?"
+                    >
                       Verwijderen
                     </SubmitButton>
                   </ActionForm>
@@ -97,7 +144,10 @@ export default async function ManageEventPage({ params }: PageProps<"/beheer/eve
             </li>
           ))}
         </ul>
-        <ActionForm action={addCategory} className="mt-3 flex flex-wrap items-end gap-2 border-t border-stone-100 pt-3">
+        <ActionForm
+          action={addCategory}
+          className="mt-3 flex flex-wrap items-end gap-2 border-t border-stone-100 pt-3"
+        >
           <input type="hidden" name="event_id" value={event.id} />
           <Field label="Categorie">
             <select name="category" className={`${inputClass} w-36`}>
@@ -109,10 +159,19 @@ export default async function ManageEventPage({ params }: PageProps<"/beheer/eve
             </select>
           </Field>
           <Field label="Extra naam">
-            <input name="label" placeholder="Optioneel" className={`${inputClass} w-36`} />
+            <input
+              name="label"
+              placeholder="Optioneel"
+              className={`${inputClass} w-36`}
+            />
           </Field>
           <Field label="Max. spelers">
-            <input name="max_players" type="number" min={1} className={`${inputClass} w-24`} />
+            <input
+              name="max_players"
+              type="number"
+              min={1}
+              className={`${inputClass} w-24`}
+            />
           </Field>
           <SubmitButton>Categorie toevoegen</SubmitButton>
         </ActionForm>
@@ -140,81 +199,48 @@ export default async function ManageEventPage({ params }: PageProps<"/beheer/eve
   );
 }
 
-function RegistrationsCard({ event, category }: { event: ClubEvent; category: Category }) {
-  const entries = groupEntries(category);
-  const looking = entries.filter((e) => e.kind === "looking");
+// Lets the organiser pair two members who are both looking for a partner.
+function PairCard({
+  event,
+  category,
+}: {
+  event: ClubEvent;
+  category: Category;
+}) {
+  const looking = groupEntries(category).filter((e) => e.kind === "looking");
+  if (looking.length < 2) return null;
 
   return (
     <Card>
-      <div className="flex items-baseline justify-between gap-2">
-        <h3 className="font-semibold">{categoryLabel(category)}</h3>
-        <span className="text-sm text-stone-600">
-          {plural(category.entry_players.length, "speler", "spelers")}
-          {category.max_players != null && ` van max. ${category.max_players}`}
-        </span>
-      </div>
-
-      {entries.length === 0 && <p className="mt-2 text-sm text-stone-600">Nog geen inschrijvingen.</p>}
-
-      <ul className="mt-2 divide-y divide-stone-100 text-sm">
-        {entries.map((entry) => (
-          <li key={entry.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2">
-            {entry.players.map((p) => (
-              <span key={p.member_id} className="flex items-center gap-2">
-                <span>
-                  {p.member?.full_name}
-                  {p.ranking && <span className="text-stone-500"> ({p.ranking})</span>}
-                </span>
-                {entry.kind === "team" && (
-                  <ActionForm action={splitEntry}>
-                    <input type="hidden" name="event_id" value={event.id} />
-                    <input type="hidden" name="entry_id" value={entry.id} />
-                    <input type="hidden" name="member_id" value={p.member_id} />
-                    <SubmitButton variant="secondary" className="min-h-7 px-2 text-xs">
-                      Loskoppelen
-                    </SubmitButton>
-                  </ActionForm>
-                )}
-                <ActionForm action={removePlayer}>
-                  <input type="hidden" name="event_id" value={event.id} />
-                  <input type="hidden" name="entry_id" value={entry.id} />
-                  <input type="hidden" name="member_id" value={p.member_id} />
-                  <SubmitButton
-                    variant="danger"
-                    className="min-h-7 px-2 text-xs"
-                    confirm={`${p.member?.full_name} uitschrijven?`}
-                  >
-                    Verwijderen
-                  </SubmitButton>
-                </ActionForm>
-              </span>
-            ))}
-            {entry.kind === "looking" && <Badge tone="amber">zoekt partner</Badge>}
-          </li>
-        ))}
-      </ul>
-
-      {looking.length >= 2 && (
-        <ActionForm action={pairEntries} className="mt-3 flex flex-wrap items-end gap-2 border-t border-stone-100 pt-3">
-          <input type="hidden" name="event_id" value={event.id} />
-          {(["first", "second"] as const).map((name, i) => (
-            <Field key={name} label={i === 0 ? "Koppel" : "met"}>
-              <select name={name} defaultValue="" required className={`${inputClass} w-44`}>
-                <option value="" disabled>
-                  Kies een speler
+      <h3 className="font-semibold">
+        {categoryLabel(category)}: zoeken een partner
+      </h3>
+      <ActionForm
+        action={pairEntries}
+        className="mt-2 flex flex-wrap items-end gap-2"
+      >
+        <input type="hidden" name="event_id" value={event.id} />
+        {(["first", "second"] as const).map((name, i) => (
+          <Field key={name} label={i === 0 ? "Koppel" : "met"}>
+            <select
+              name={name}
+              defaultValue=""
+              required
+              className={`${inputClass} w-44`}
+            >
+              <option value="" disabled>
+                Kies een speler
+              </option>
+              {looking.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.players.at(0)?.member?.full_name}
                 </option>
-                {looking.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.players.at(0)?.member?.full_name}
-                    {e.players.at(0)?.ranking && ` (${e.players.at(0)?.ranking})`}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          ))}
-          <SubmitButton>Maak team</SubmitButton>
-        </ActionForm>
-      )}
+              ))}
+            </select>
+          </Field>
+        ))}
+        <SubmitButton>Maak team</SubmitButton>
+      </ActionForm>
     </Card>
   );
 }
