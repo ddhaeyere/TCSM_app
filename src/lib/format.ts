@@ -10,9 +10,20 @@ export function sportLabel(sport: Sport): string {
 }
 
 export function categoryLabel(category: Pick<Category, "sport" | "format" | "label">): string {
-  const base = `${SPORT_LABELS[category.sport]} ${FORMAT_LABELS[category.format]}`;
+  // Padel is always doubles, so it needs no "dubbel".
+  const base =
+    category.sport === "padel"
+      ? SPORT_LABELS.padel
+      : `${SPORT_LABELS[category.sport]} ${FORMAT_LABELS[category.format]}`;
   return category.label ? `${base} · ${category.label}` : base;
 }
+
+// The categories an organiser can pick. Padel is always played as doubles.
+export const CATEGORY_CHOICES: { value: `${Sport}:${PlayFormat}`; label: string }[] = [
+  { value: "tennis:doubles", label: "Tennis dubbel" },
+  { value: "tennis:singles", label: "Tennis enkel" },
+  { value: "padel:doubles", label: "Padel" },
+];
 
 export function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;

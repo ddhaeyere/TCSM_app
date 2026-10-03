@@ -15,7 +15,7 @@ import { ActionForm, SubmitButton } from "@/components/forms";
 import { Badge, Card, Field, PageTitle, inputClass } from "@/components/ui";
 import { requireOrganiser } from "@/lib/auth";
 import { confirmedPlayers, groupEntries } from "@/lib/entries";
-import { categoryLabel, plural } from "@/lib/format";
+import { CATEGORY_CHOICES, categoryLabel, plural } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { EVENT_SELECT, type Category, type ClubEvent } from "@/lib/types";
 import { EventFields } from "../event-fields";
@@ -99,16 +99,13 @@ export default async function ManageEventPage({ params }: PageProps<"/beheer/eve
         </ul>
         <ActionForm action={addCategory} className="mt-3 flex flex-wrap items-end gap-2 border-t border-stone-100 pt-3">
           <input type="hidden" name="event_id" value={event.id} />
-          <Field label="Sport">
-            <select name="sport" className={`${inputClass} w-28`}>
-              <option value="tennis">Tennis</option>
-              <option value="padel">Padel</option>
-            </select>
-          </Field>
-          <Field label="Type">
-            <select name="format" className={`${inputClass} w-28`}>
-              <option value="doubles">Dubbel</option>
-              <option value="singles">Enkel</option>
+          <Field label="Categorie">
+            <select name="category" className={`${inputClass} w-36`}>
+              {CATEGORY_CHOICES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
             </select>
           </Field>
           <Field label="Extra naam">

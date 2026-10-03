@@ -4,16 +4,13 @@ import { createEvent } from "@/app/actions/events";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Card, PageTitle } from "@/components/ui";
 import { requireOrganiser } from "@/lib/auth";
+import { CATEGORY_CHOICES } from "@/lib/format";
 import { EventFields } from "../event-fields";
 
 export const metadata: Metadata = { title: "Nieuw evenement" };
 
-const CATEGORY_CHOICES = [
-  { value: "tennis:doubles", label: "Tennis dubbel", checked: true },
-  { value: "padel:doubles", label: "Padel dubbel", checked: true },
-  { value: "tennis:singles", label: "Tennis enkel", checked: false },
-  { value: "padel:singles", label: "Padel enkel", checked: false },
-];
+// Ticked by default: most events are tennis doubles and padel.
+const DEFAULT_CHOICES = ["tennis:doubles", "padel:doubles"];
 
 export default async function NewEventPage() {
   await requireOrganiser();
@@ -42,7 +39,7 @@ export default async function NewEventPage() {
                     type="checkbox"
                     name="categories"
                     value={c.value}
-                    defaultChecked={c.checked}
+                    defaultChecked={DEFAULT_CHOICES.includes(c.value)}
                     className="size-4 accent-court-700"
                   />
                   {c.label}
