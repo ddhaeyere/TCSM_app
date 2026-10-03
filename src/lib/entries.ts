@@ -3,9 +3,8 @@ import type { Category, EntryPlayer } from "./types";
 export interface Entry {
   id: string;
   players: EntryPlayer[];
-  // single: singles player · team: two confirmed players ·
-  // awaiting: partner has not confirmed yet · looking: needs a partner
-  kind: "single" | "team" | "awaiting" | "looking";
+  // single: singles player · team: two players · looking: needs a partner
+  kind: "single" | "team" | "looking";
 }
 
 export function groupEntries(category: Category): Entry[] {
@@ -17,12 +16,11 @@ export function groupEntries(category: Category): Entry[] {
   }
 
   const entries: Entry[] = [...byEntry.entries()].map(([id, players]) => {
-    players.sort((a, b) => Number(b.confirmed) - Number(a.confirmed));
+    players.sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
     let kind: Entry["kind"];
     if (category.format === "singles") kind = "single";
     else if (players.length === 1) kind = "looking";
-    else if (players.every((p) => p.confirmed)) kind = "team";
-    else kind = "awaiting";
+    else kind = "team";
     return { id, players, kind };
   });
 
@@ -30,11 +28,6 @@ export function groupEntries(category: Category): Entry[] {
   return entries.sort((a, b) => firstSignup(a) - firstSignup(b));
 }
 
-export function confirmedPlayers(category: Category): EntryPlayer[] {
-  return category.entry_players.filter((p) => p.confirmed);
-}
-
-// Places taken, counting open invitations, as the database does.
 export function placesLeft(category: Category): number | null {
   if (category.max_players == null) return null;
   return Math.max(0, category.max_players - category.entry_players.length);

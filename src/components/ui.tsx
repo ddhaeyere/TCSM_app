@@ -51,26 +51,29 @@ export function Badge({
   );
 }
 
-export function RankingSelect({
+// A ranking dropdown for forms where the ranking may stay empty.
+export function RankingField({
   sport,
-  defaultValue,
-  name = "ranking",
+  name,
+  label,
+  value,
 }: {
   sport: Sport;
-  defaultValue?: string | null;
-  name?: string;
+  name: string;
+  label: string;
+  value: string | null;
 }) {
   return (
-    <select name={name} defaultValue={defaultValue ?? ""} required className={inputClass}>
-      <option value="" disabled>
-        Kies je klassement
-      </option>
-      {rankingOptions(sport).map((r) => (
-        <option key={r} value={r}>
-          {r}
-        </option>
-      ))}
-    </select>
+    <Field label={label}>
+      <select name={name} defaultValue={value ?? ""} className={inputClass}>
+        <option value="">Niet ingevuld</option>
+        {rankingOptions(sport).map((r) => (
+          <option key={r} value={r}>
+            {r}
+          </option>
+        ))}
+      </select>
+    </Field>
   );
 }
 

@@ -14,7 +14,7 @@ import {
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Badge, Card, Field, PageTitle, inputClass } from "@/components/ui";
 import { requireOrganiser } from "@/lib/auth";
-import { confirmedPlayers, groupEntries } from "@/lib/entries";
+import { groupEntries } from "@/lib/entries";
 import { CATEGORY_CHOICES, categoryLabel, plural } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { EVENT_SELECT, type Category, type ClubEvent } from "@/lib/types";
@@ -149,7 +149,7 @@ function RegistrationsCard({ event, category }: { event: ClubEvent; category: Ca
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="font-semibold">{categoryLabel(category)}</h3>
         <span className="text-sm text-stone-600">
-          {plural(confirmedPlayers(category).length, "speler", "spelers")}
+          {plural(category.entry_players.length, "speler", "spelers")}
           {category.max_players != null && ` van max. ${category.max_players}`}
         </span>
       </div>
@@ -160,17 +160,16 @@ function RegistrationsCard({ event, category }: { event: ClubEvent; category: Ca
         {entries.map((entry) => (
           <li key={entry.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2">
             {entry.players.map((p) => (
-              <span key={p.profile_id} className="flex items-center gap-2">
+              <span key={p.member_id} className="flex items-center gap-2">
                 <span>
-                  {p.player?.full_name}
+                  {p.member?.full_name}
                   {p.ranking && <span className="text-stone-500"> ({p.ranking})</span>}
                 </span>
-                {!p.confirmed && <Badge tone="amber">uitgenodigd</Badge>}
                 {entry.kind === "team" && (
                   <ActionForm action={splitEntry}>
                     <input type="hidden" name="event_id" value={event.id} />
                     <input type="hidden" name="entry_id" value={entry.id} />
-                    <input type="hidden" name="profile_id" value={p.profile_id} />
+                    <input type="hidden" name="member_id" value={p.member_id} />
                     <SubmitButton variant="secondary" className="min-h-7 px-2 text-xs">
                       Loskoppelen
                     </SubmitButton>
@@ -179,11 +178,11 @@ function RegistrationsCard({ event, category }: { event: ClubEvent; category: Ca
                 <ActionForm action={removePlayer}>
                   <input type="hidden" name="event_id" value={event.id} />
                   <input type="hidden" name="entry_id" value={entry.id} />
-                  <input type="hidden" name="profile_id" value={p.profile_id} />
+                  <input type="hidden" name="member_id" value={p.member_id} />
                   <SubmitButton
                     variant="danger"
                     className="min-h-7 px-2 text-xs"
-                    confirm={`${p.player?.full_name} uitschrijven?`}
+                    confirm={`${p.member?.full_name} uitschrijven?`}
                   >
                     Verwijderen
                   </SubmitButton>
@@ -206,7 +205,7 @@ function RegistrationsCard({ event, category }: { event: ClubEvent; category: Ca
                 </option>
                 {looking.map((e) => (
                   <option key={e.id} value={e.id}>
-                    {e.players.at(0)?.player?.full_name}
+                    {e.players.at(0)?.member?.full_name}
                     {e.players.at(0)?.ranking && ` (${e.players.at(0)?.ranking})`}
                   </option>
                 ))}

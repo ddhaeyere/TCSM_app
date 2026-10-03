@@ -206,7 +206,7 @@ export async function splitEntry(_: ActionState, formData: FormData): Promise<Ac
   const supabase = await createClient();
   const { error } = await supabase.rpc("organiser_split_entry", {
     p_entry_id: String(formData.get("entry_id")),
-    p_profile_id: String(formData.get("profile_id")),
+    p_member_id: String(formData.get("member_id")),
   });
   if (error) return { error: error.message };
 
@@ -217,9 +217,10 @@ export async function splitEntry(_: ActionState, formData: FormData): Promise<Ac
 export async function removePlayer(_: ActionState, formData: FormData): Promise<ActionState> {
   const eventId = String(formData.get("event_id"));
   const supabase = await createClient();
-  const { error } = await supabase.rpc("organiser_remove_player", {
+  // Organisers may unregister anyone, also after the deadline.
+  const { error } = await supabase.rpc("withdraw_registration", {
     p_entry_id: String(formData.get("entry_id")),
-    p_profile_id: String(formData.get("profile_id")),
+    p_member_id: String(formData.get("member_id")),
   });
   if (error) return { error: error.message };
 

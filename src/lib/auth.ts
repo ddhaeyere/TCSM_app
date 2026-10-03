@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { createClient } from "./supabase/server";
-import type { Profile } from "./types";
+import { MEMBER_COLUMNS, type ClubMember, type Profile } from "./types";
 
-export const PROFILE_COLUMNS = "id, full_name, role, status, tennis_ranking, padel_ranking";
+export const PROFILE_COLUMNS = "id, full_name, role, status";
 
 // The logged-in member's profile, or null when nobody is logged in.
 export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
@@ -19,6 +19,20 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
     .eq("id", user.id)
     .single();
   return (data as Profile | null) ?? null;
+});
+
+// The club member that belongs to the logged-in account, linked through the
+// email address. Null when the account is not on the member list.
+export const getCurrentMember = cache(async (): Promise<ClubMember | null> => {
+  const profile = await getCurrentProfile();
+  if (!profile) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("club_members")
+    .select(MEMBER_COLUMNS)
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+  return (data as ClubMember | null) ?? null;
 });
 
 export async function requireApprovedProfile(): Promise<Profile> {

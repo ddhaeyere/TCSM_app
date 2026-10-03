@@ -37,10 +37,13 @@ export function ActionForm({
   );
 }
 
+const BUTTON = "inline-flex min-h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold";
 const VARIANTS = {
-  primary: "bg-club-700 text-white hover:bg-club-800",
-  secondary: "border border-stone-300 bg-white text-stone-800 hover:bg-stone-50",
-  danger: "border border-red-300 bg-white text-red-700 hover:bg-red-50",
+  primary: `${BUTTON} bg-club-700 text-white hover:bg-club-800`,
+  secondary: `${BUTTON} border border-stone-300 bg-white text-stone-800 hover:bg-stone-50`,
+  danger: `${BUTTON} border border-red-300 bg-white text-red-700 hover:bg-red-50`,
+  // A small text link, for actions next to a name.
+  link: "text-xs text-stone-500 underline hover:text-red-700",
 };
 
 export function SubmitButton({
@@ -71,7 +74,7 @@ export function SubmitButton({
       onClick={(e) => {
         if (confirm && !window.confirm(confirm)) e.preventDefault();
       }}
-      className={`inline-flex min-h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold transition disabled:opacity-60 ${VARIANTS[variant]} ${className}`}
+      className={`transition disabled:opacity-60 ${VARIANTS[variant]} ${className}`}
     >
       {pending ? "Even geduld…" : children}
     </button>

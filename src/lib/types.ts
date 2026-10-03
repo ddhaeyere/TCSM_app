@@ -2,23 +2,38 @@ export type Sport = "tennis" | "padel";
 export type PlayFormat = "singles" | "doubles";
 export type UserRole = "member" | "organiser" | "admin";
 export type AccountStatus = "pending" | "approved" | "rejected";
+export type Gender = "M" | "V";
 
 export interface Profile {
   id: string;
   full_name: string;
   role: UserRole;
   status: AccountStatus;
-  tennis_ranking: string | null;
-  padel_ranking: string | null;
 }
+
+// A member of the club list. Registrations point to members, not accounts.
+export interface ClubMember {
+  id: string;
+  last_name: string;
+  first_name: string;
+  full_name: string;
+  gender: Gender | null;
+  tennis_singles_ranking: string | null;
+  tennis_doubles_ranking: string | null;
+  padel_ranking: string | null;
+  profile_id: string | null;
+}
+
+export const MEMBER_COLUMNS =
+  "id, last_name, first_name, full_name, gender, tennis_singles_ranking, tennis_doubles_ranking, padel_ranking, profile_id";
 
 export interface EntryPlayer {
   entry_id: string;
-  profile_id: string;
+  member_id: string;
   ranking: string | null;
-  confirmed: boolean;
+  registered_by: string | null;
   created_at: string;
-  player: { full_name: string } | null;
+  member: { full_name: string } | null;
 }
 
 export interface Category {
@@ -48,8 +63,8 @@ export const EVENT_SELECT = `
   event_categories (
     id, sport, format, label, max_players, position,
     entry_players (
-      entry_id, profile_id, ranking, confirmed, created_at,
-      player:profiles!entry_players_profile_id_fkey ( full_name )
+      entry_id, member_id, ranking, registered_by, created_at,
+      member:club_members ( full_name )
     )
   )
 `;

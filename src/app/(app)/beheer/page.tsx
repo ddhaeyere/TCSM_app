@@ -7,6 +7,9 @@ import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Beheer" };
 
+const SECONDARY_LINK =
+  "inline-flex min-h-10 items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 text-sm font-semibold hover:bg-stone-50";
+
 export default async function AdminPage() {
   const profile = await requireOrganiser();
   const supabase = await createClient();
@@ -14,7 +17,7 @@ export default async function AdminPage() {
   const [{ data: events }, pending] = await Promise.all([
     supabase
       .from("events")
-      .select("id, title, starts_at, event_categories ( entry_players ( profile_id ) )")
+      .select("id, title, starts_at, event_categories ( entry_players ( member_id ) )")
       .order("starts_at", { ascending: false }),
     profile.role === "admin"
       ? supabase
@@ -36,13 +39,15 @@ export default async function AdminPage() {
           Nieuw evenement
         </Link>
         {profile.role === "admin" && (
-          <Link
-            href="/beheer/leden"
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 text-sm font-semibold hover:bg-stone-50"
-          >
-            Leden
-            {(pending.count ?? 0) > 0 && <Badge tone="amber">{pending.count} wachten</Badge>}
-          </Link>
+          <>
+            <Link href="/beheer/leden" className={SECONDARY_LINK}>
+              Ledenlijst
+            </Link>
+            <Link href="/beheer/accounts" className={SECONDARY_LINK}>
+              Accounts
+              {(pending.count ?? 0) > 0 && <Badge tone="amber">{pending.count} wachten</Badge>}
+            </Link>
+          </>
         )}
       </div>
 
@@ -52,7 +57,7 @@ export default async function AdminPage() {
         <ul className="divide-y divide-stone-100">
           {(events ?? []).map((e) => {
             const players = new Set(
-              e.event_categories.flatMap((c) => c.entry_players.map((p) => p.profile_id)),
+              e.event_categories.flatMap((c) => c.entry_players.map((p) => p.member_id)),
             ).size;
             return (
               <li key={e.id} className="py-2">
