@@ -8,7 +8,8 @@ export interface Profile {
   full_name: string;
   role: UserRole;
   status: AccountStatus;
-  tennis_ranking: string | null;
+  tennis_singles_ranking: string | null;
+  tennis_doubles_ranking: string | null;
   padel_ranking: string | null;
 }
 

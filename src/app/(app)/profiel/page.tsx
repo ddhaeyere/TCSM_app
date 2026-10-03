@@ -27,8 +27,24 @@ export default async function ProfilePage() {
               className={inputClass}
             />
           </Field>
-          <RankingField sport="tennis" value={profile.tennis_ranking} />
-          <RankingField sport="padel" value={profile.padel_ranking} />
+          <RankingField
+            sport="tennis"
+            name="tennis_singles_ranking"
+            label="Klassement tennis enkel"
+            value={profile.tennis_singles_ranking}
+          />
+          <RankingField
+            sport="tennis"
+            name="tennis_doubles_ranking"
+            label="Klassement tennis dubbel"
+            value={profile.tennis_doubles_ranking}
+          />
+          <RankingField
+            sport="padel"
+            name="padel_ranking"
+            label="Klassement padel"
+            value={profile.padel_ranking}
+          />
           <SubmitButton>Opslaan</SubmitButton>
         </ActionForm>
       </Card>
@@ -39,13 +55,23 @@ export default async function ProfilePage() {
   );
 }
 
-function RankingField({ sport, value }: { sport: Sport; value: string | null }) {
+function RankingField({
+  sport,
+  name,
+  label,
+  value,
+}: {
+  sport: Sport;
+  name: string;
+  label: string;
+  value: string | null;
+}) {
   return (
     <Field
-      label={sport === "tennis" ? "Klassement tennis" : "Klassement padel"}
+      label={label}
       hint="Wordt ingevuld bij je volgende inschrijving. Je kan het daar nog aanpassen."
     >
-      <select name={`${sport}_ranking`} defaultValue={value ?? ""} className={inputClass}>
+      <select name={name} defaultValue={value ?? ""} className={inputClass}>
         <option value="">Niet ingevuld</option>
         {rankingOptions(sport).map((r) => (
           <option key={r} value={r}>

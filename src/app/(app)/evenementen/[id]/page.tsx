@@ -17,6 +17,7 @@ import {
   isRegistrationOpen,
   registrationClosesAt,
 } from "@/lib/format";
+import { profileRanking } from "@/lib/rankings";
 import { createClient } from "@/lib/supabase/server";
 import { EVENT_SELECT, type Category, type ClubEvent, type Profile } from "@/lib/types";
 
@@ -112,7 +113,7 @@ function CategoryCard({
   const left = placesLeft(category);
   const count = confirmedPlayers(category).length;
   const doubles = category.format === "doubles";
-  const lastRanking = category.sport === "tennis" ? profile.tennis_ranking : profile.padel_ranking;
+  const lastRanking = profileRanking(profile, category.sport, category.format);
 
   const teams = entries.filter((e) => e.kind === "team" || e.kind === "awaiting");
   const looking = entries.filter((e) => e.kind === "looking");

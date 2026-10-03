@@ -11,6 +11,7 @@ import {
   hoursAgo,
   isRegistrationOpen,
 } from "@/lib/format";
+import { profileRanking } from "@/lib/rankings";
 import { createClient } from "@/lib/supabase/server";
 import { EVENT_SELECT, type ClubEvent, type Profile, type Sport } from "@/lib/types";
 
@@ -143,7 +144,7 @@ function InvitationCard({ invitation, profile }: { invitation: Invitation; profi
         <div className="min-w-40 flex-1">
           <RankingSelect
             sport={sport}
-            defaultValue={sport === "tennis" ? profile.tennis_ranking : profile.padel_ranking}
+            defaultValue={profileRanking(profile, sport, category.format)}
           />
         </div>
         <SubmitButton name="answer" value="accept">

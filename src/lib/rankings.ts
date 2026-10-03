@@ -1,4 +1,4 @@
-import type { Sport } from "./types";
+import type { PlayFormat, Profile, Sport } from "./types";
 
 // Official rankings of Tennis en Padel Vlaanderen, lowest first.
 // Adjust these lists when the federation changes its rankings.
@@ -16,4 +16,10 @@ export function rankingOptions(sport: Sport): string[] {
 
 export function isValidRanking(sport: Sport, ranking: string): boolean {
   return rankingOptions(sport).includes(ranking);
+}
+
+// The ranking a member used last time for this kind of category.
+export function profileRanking(profile: Profile, sport: Sport, format: PlayFormat): string | null {
+  if (sport === "padel") return profile.padel_ranking;
+  return format === "singles" ? profile.tennis_singles_ranking : profile.tennis_doubles_ranking;
 }

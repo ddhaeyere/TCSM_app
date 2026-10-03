@@ -3,7 +3,7 @@ import { cache } from "react";
 import { createClient } from "./supabase/server";
 import type { Profile } from "./types";
 
-export const PROFILE_COLUMNS = "id, full_name, role, status, tennis_ranking, padel_ranking";
+export const PROFILE_COLUMNS = "id, full_name, role, status, tennis_singles_ranking, tennis_doubles_ranking, padel_ranking";
 
 // The logged-in member's profile, or null when nobody is logged in.
 export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
