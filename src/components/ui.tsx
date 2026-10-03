@@ -3,7 +3,7 @@ import { rankingOptions } from "@/lib/rankings";
 import type { Sport } from "@/lib/types";
 
 export const inputClass =
-  "mt-1 block w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-base text-stone-900 focus:border-court-600 focus:outline-none focus:ring-2 focus:ring-court-200";
+  "mt-1 block w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-base text-stone-900 focus:border-club-600 focus:outline-none focus:ring-2 focus:ring-club-200";
 
 export function Field({
   label,
@@ -36,13 +36,13 @@ export function Badge({
   tone = "neutral",
 }: {
   children: ReactNode;
-  tone?: "neutral" | "green" | "amber" | "clay";
+  tone?: "neutral" | "green" | "amber" | "club";
 }) {
   const tones = {
     neutral: "bg-stone-100 text-stone-700",
-    green: "bg-court-100 text-court-800",
+    green: "bg-emerald-100 text-emerald-800",
     amber: "bg-amber-100 text-amber-800",
-    clay: "bg-clay-100 text-clay-800",
+    club: "bg-club-100 text-club-800",
   };
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${tones[tone]}`}>

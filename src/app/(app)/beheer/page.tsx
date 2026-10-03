@@ -31,7 +31,7 @@ export default async function AdminPage() {
       <div className="mb-6 flex flex-wrap gap-3">
         <Link
           href="/beheer/evenementen/nieuw"
-          className="inline-flex min-h-10 items-center rounded-lg bg-court-700 px-4 text-sm font-semibold text-white hover:bg-court-800"
+          className="inline-flex min-h-10 items-center rounded-lg bg-club-700 px-4 text-sm font-semibold text-white hover:bg-club-800"
         >
           Nieuw evenement
         </Link>
@@ -58,7 +58,7 @@ export default async function AdminPage() {
               <li key={e.id} className="py-2">
                 <Link href={`/beheer/evenementen/${e.id}`} className="flex items-center gap-2">
                   <span className="flex-1">
-                    <span className="font-medium text-court-800 underline">{e.title}</span>
+                    <span className="font-medium text-club-800 underline">{e.title}</span>
                     <span className="block text-sm text-stone-600">{formatDateTime(e.starts_at)}</span>
                   </span>
                   {isPast(e.starts_at) && <Badge>voorbij</Badge>}

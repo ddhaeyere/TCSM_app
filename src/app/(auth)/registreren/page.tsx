@@ -34,7 +34,7 @@ export default function SignupPage() {
       </ActionForm>
       <p className="mt-4 text-sm">
         Al een account?{" "}
-        <Link href="/login" className="font-medium text-court-700 underline">
+        <Link href="/login" className="font-medium text-club-700 underline">
           Inloggen
         </Link>
       </p>

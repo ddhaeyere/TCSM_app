@@ -1,16 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-court-50: #f0f7f2;
-  --color-court-100: #dcefe2;
-  --color-court-200: #bbdfc7;
-  --color-court-600: #2f7d4d;
-  --color-court-700: #23643c;
-  --color-court-800: #1d5032;
-  --color-court-900: #173f28;
-  --color-clay-100: #fbe6dc;
-  --color-clay-500: #c8643b;
-  --color-clay-800: #7c3618;
+  /* Club colours from the TCSM logo: navy #0e3a5a and gold #f2ba52. */
+  --color-club-50: #eef4f9;
+  --color-club-100: #dbe7f1;
+  --color-club-200: #b5cde2;
+  --color-club-600: #1a5280;
+  --color-club-700: #0e3a5a;
+  --color-club-800: #0b2f4a;
+  --color-club-900: #082338;
+  --color-gold-400: #f2ba52;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
