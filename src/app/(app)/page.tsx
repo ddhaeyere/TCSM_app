@@ -86,8 +86,8 @@ function EventCard({ event, profileId }: { event: ClubEvent; profileId: string }
 
   return (
     <Link href={`/evenementen/${event.id}`} className="block">
-      <Card className="flex gap-4 transition hover:border-court-600">
-        <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-court-50 py-2 text-court-800">
+      <Card className="flex gap-4 transition hover:border-club-600">
+        <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-club-50 py-2 text-club-800">
           <span className="text-2xl leading-none font-bold">{day}</span>
           <span className="text-xs uppercase">{month}</span>
         </div>
@@ -100,7 +100,7 @@ function EventCard({ event, profileId }: { event: ClubEvent; profileId: string }
           <p className="text-sm text-stone-600">{formatDateTime(event.starts_at)}</p>
           <div className="mt-2 flex flex-wrap gap-1">
             {categories.map((c) => (
-              <Badge key={c.id} tone={c.sport === "padel" ? "clay" : "neutral"}>
+              <Badge key={c.id} tone={c.sport === "padel" ? "club" : "neutral"}>
                 {categoryLabel(c)}: {confirmedPlayers(c).length}
               </Badge>
             ))}

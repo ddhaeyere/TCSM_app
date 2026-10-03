@@ -33,7 +33,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <SubmitButton className="w-full">Inloggen</SubmitButton>
       </ActionForm>
       <div className="mt-4 flex justify-between text-sm">
-        <Link href="/registreren" className="font-medium text-court-700 underline">
+        <Link href="/registreren" className="font-medium text-club-700 underline">
           Account aanmaken
         </Link>
         <Link href="/wachtwoord-vergeten" className="text-stone-600 underline">

@@ -36,7 +36,7 @@ export default async function MembersPage() {
 
   return (
     <>
-      <Link href="/beheer" className="text-sm text-court-700 underline">
+      <Link href="/beheer" className="text-sm text-club-700 underline">
         ← Beheer
       </Link>
       <PageTitle sub={`${approved.length} goedgekeurde leden`}>Leden</PageTitle>

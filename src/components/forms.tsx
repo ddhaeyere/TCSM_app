@@ -29,7 +29,7 @@ export function ActionForm({
         </p>
       )}
       {state.message && (
-        <p role="status" className="mt-2 text-sm text-court-700">
+        <p role="status" className="mt-2 text-sm text-club-700">
           {state.message}
         </p>
       )}
@@ -38,7 +38,7 @@ export function ActionForm({
 }
 
 const VARIANTS = {
-  primary: "bg-court-700 text-white hover:bg-court-800",
+  primary: "bg-club-700 text-white hover:bg-club-800",
   secondary: "border border-stone-300 bg-white text-stone-800 hover:bg-stone-50",
   danger: "border border-red-300 bg-white text-red-700 hover:bg-red-50",
 };

@@ -17,7 +17,7 @@ export default async function NewEventPage() {
 
   return (
     <>
-      <Link href="/beheer" className="text-sm text-court-700 underline">
+      <Link href="/beheer" className="text-sm text-club-700 underline">
         ← Beheer
       </Link>
       <PageTitle>Nieuw evenement</PageTitle>
@@ -40,7 +40,7 @@ export default async function NewEventPage() {
                     name="categories"
                     value={c.value}
                     defaultChecked={DEFAULT_CHOICES.includes(c.value)}
-                    className="size-4 accent-court-700"
+                    className="size-4 accent-club-700"
                   />
                   {c.label}
                 </label>

@@ -39,7 +39,7 @@ export default async function EventPage({ params }: PageProps<"/evenementen/[id]
 
   return (
     <>
-      <Link href="/" className="text-sm text-court-700 underline">
+      <Link href="/" className="text-sm text-club-700 underline">
         ← Alle evenementen
       </Link>
 
@@ -60,7 +60,7 @@ export default async function EventPage({ params }: PageProps<"/evenementen/[id]
         {isOrganiser(profile) && (
           <Link
             href={`/beheer/evenementen/${event.id}`}
-            className="mt-3 inline-block text-sm text-court-700 underline"
+            className="mt-3 inline-block text-sm text-club-700 underline"
           >
             Evenement beheren
           </Link>
@@ -134,7 +134,7 @@ function CategoryCard({
 
       {/* The member's own registration */}
       {mine && myPlayer && (
-        <div className="mt-3 rounded-lg bg-court-50 p-3 text-sm text-court-900">
+        <div className="mt-3 rounded-lg bg-club-50 p-3 text-sm text-club-900">
           {!myPlayer.confirmed ? (
             <>
               <p>

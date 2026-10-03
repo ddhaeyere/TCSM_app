@@ -35,10 +35,10 @@ export default async function ManageEventPage({ params }: PageProps<"/beheer/eve
   return (
     <>
       <div className="flex justify-between text-sm">
-        <Link href="/beheer" className="text-court-700 underline">
+        <Link href="/beheer" className="text-club-700 underline">
           ← Beheer
         </Link>
-        <Link href={`/evenementen/${event.id}`} className="text-court-700 underline">
+        <Link href={`/evenementen/${event.id}`} className="text-club-700 underline">
           Bekijk als lid
         </Link>
       </div>

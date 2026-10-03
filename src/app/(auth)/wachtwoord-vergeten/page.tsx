@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
         <SubmitButton className="w-full">Stuur link</SubmitButton>
       </ActionForm>
       <p className="mt-4 text-sm">
-        <Link href="/login" className="text-court-700 underline">
+        <Link href="/login" className="text-club-700 underline">
           Terug naar inloggen
         </Link>
       </p>
