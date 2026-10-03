@@ -186,9 +186,11 @@ export async function updateCategory(_: ActionState, formData: FormData): Promis
     .from("event_categories")
     .update({ label, ...rules, max_players: maxPlayers })
     .eq("id", categoryId);
-  if (error) return { error: "Opslaan lukte niet." };
+  // P0001: a rule the existing registrations break, explained by the database.
+  if (error) return { error: error.code === "P0001" ? error.message : "Opslaan lukte niet." };
 
   refresh(eventId);
+  revalidatePath(`/beheer/evenementen/${eventId}/reeksen/${categoryId}`);
   return { message: "Opgeslagen." };
 }
 
@@ -203,7 +205,7 @@ export async function deleteCategory(_: ActionState, formData: FormData): Promis
   if (error) return { error: "Verwijderen lukte niet." };
 
   refresh(eventId);
-  return {};
+  redirect(`/beheer/evenementen/${eventId}`);
 }
 
 export async function pairEntries(_: ActionState, formData: FormData): Promise<ActionState> {
