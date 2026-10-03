@@ -1,22 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { updateAccount } from "@/app/actions/admin";
 import { deleteClubMember, updateClubMember } from "@/app/actions/members";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Card, Field, PageTitle, RankingField, inputClass } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import type { ClubMember } from "@/lib/types";
+import type { ClubMember, UserRole } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Lid" };
 
 export default async function EditMemberPage({ params }: PageProps<"/beheer/leden/[id]">) {
   const { id } = await params;
-  await requireAdmin();
+  const me = await requireAdmin();
   const supabase = await createClient();
-  const { data } = await supabase.rpc("admin_list_members");
+  const [{ data }, { data: accounts }] = await Promise.all([
+    supabase.rpc("admin_list_members"),
+    supabase.rpc("admin_list_profiles"),
+  ]);
   const member = ((data ?? []) as (ClubMember & { email: string | null })[]).find((m) => m.id === id);
   if (!member) notFound();
+  const account = ((accounts ?? []) as { id: string; role: UserRole }[]).find(
+    (a) => a.id === member.profile_id,
+  );
 
   return (
     <>
@@ -63,6 +70,35 @@ export default async function EditMemberPage({ params }: PageProps<"/beheer/lede
           </div>
           <SubmitButton>Opslaan</SubmitButton>
         </ActionForm>
+      </Card>
+
+      <Card className="mb-6">
+        <h2 className="font-semibold">Rechten</h2>
+        {!account ? (
+          <p className="mt-1 text-sm text-stone-600">
+            Dit lid kan beheerder worden zodra het een account aanmaakt met het e-mailadres hierboven.
+          </p>
+        ) : account.id === me.id ? (
+          <p className="mt-1 text-sm text-stone-600">Dit ben jij. Je kan je eigen rechten niet aanpassen.</p>
+        ) : (
+          <ActionForm action={updateAccount} className="mt-2 flex flex-wrap items-end gap-2">
+            <input type="hidden" name="profile_id" value={account.id} />
+            <Field
+              label="Rol"
+              hint="Een beheerder maakt evenementen aan en beheert de ledenlijst en de inschrijvingen."
+            >
+              <select
+                name="role"
+                defaultValue={account.role === "member" ? "member" : "admin"}
+                className={`${inputClass} w-44`}
+              >
+                <option value="member">Lid</option>
+                <option value="admin">Beheerder</option>
+              </select>
+            </Field>
+            <SubmitButton variant="secondary">Opslaan</SubmitButton>
+          </ActionForm>
+        )}
       </Card>
 
       <ActionForm action={deleteClubMember}>
