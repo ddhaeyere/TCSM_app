@@ -5,8 +5,8 @@ export interface SeriesPlayer {
   ranking: string | null;
 }
 
-// Letters for who plays: heren, dames or gemengd.
-function genderPrefix(players: SeriesPlayer[]): string {
+// Letter for who plays: heren, dames or gemengd.
+function genderLetter(players: SeriesPlayer[]): string {
   const genders = new Set(players.map((p) => p.gender));
   if (genders.has(null)) return "";
   if (genders.size > 1) return "g";
@@ -23,9 +23,10 @@ function padelLevel(ranking: string | null): number {
   return ranking ? points(ranking.replace(/^P/i, "")) : 0;
 }
 
-// The series a registration plays in, e.g. "he5" (heren enkel, 5 points),
-// "dd30" (dubbel dames, up to 30 points together) or "gp300" (padel
-// gemengd, level of the stronger player). Null while a partner is missing.
+// The series a registration plays in, as the club writes them: "dd30"
+// (dubbel dames, up to 30 points together), "dg" gemengd, "dh" heren; "eh5"
+// (enkel heren, 5 points); "pg300" (padel gemengd, level of the stronger
+// player). Null while a partner is missing.
 export function seriesName(
   sport: Sport,
   format: PlayFormat,
@@ -33,23 +34,20 @@ export function seriesName(
 ): string | null {
   if (players.length === 0) return null;
   if (format === "doubles" && players.length < 2) return null;
-  const prefix = genderPrefix(players);
+  const who = genderLetter(players);
 
   if (sport === "padel") {
     const level = Math.max(...players.map((p) => padelLevel(p.ranking)));
-    return `${prefix}p${level || "?"}`;
+    return `p${who}${level || "?"}`;
   }
 
   if (format === "singles") {
-    const [player] = players;
-    const who =
-      player.gender === "M" ? "he" : player.gender === "V" ? "de" : "e";
-    return `${who}${points(player.ranking)}`;
+    return `e${who}${points(players[0].ranking)}`;
   }
 
   // Doubles: the two rankings together, rounded up to the next ten.
   const total = players.reduce((sum, p) => sum + points(p.ranking), 0);
-  return `${prefix}d${Math.max(10, Math.ceil(total / 10) * 10)}`;
+  return `d${who}${Math.max(10, Math.ceil(total / 10) * 10)}`;
 }
 
 // Sorts series names: by kind first, then by level.
