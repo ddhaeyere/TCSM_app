@@ -132,7 +132,7 @@ begin
     perform 1 from public.event_categories where id = cat.id for update;
     select count(*) into taken from public.entry_players where category_id = cat.id;
     if taken + (case when p_partner_id is null then 1 else 2 end) > cat.max_players then
-      raise exception 'Deze categorie is volzet';
+      raise exception 'Deze reeks is volzet';
     end if;
   end if;
 
