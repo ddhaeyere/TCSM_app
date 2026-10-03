@@ -3,6 +3,7 @@ export type PlayFormat = "singles" | "doubles";
 export type UserRole = "member" | "organiser" | "admin";
 export type AccountStatus = "pending" | "approved" | "rejected";
 export type Gender = "M" | "V";
+export type SeriesGender = "heren" | "dames" | "gemengd";
 
 export interface Profile {
   id: string;
@@ -41,6 +42,9 @@ export interface Category {
   sport: Sport;
   format: PlayFormat;
   label: string | null;
+  // Who may play, and the highest ranking allowed; null means anyone.
+  gender: SeriesGender | null;
+  max_ranking: string | null;
   max_players: number | null;
   position: number;
   entry_players: EntryPlayer[];
@@ -61,7 +65,7 @@ export interface ClubEvent {
 export const EVENT_SELECT = `
   id, title, description, location, starts_at, ends_at, registration_deadline,
   event_categories (
-    id, sport, format, label, max_players, position,
+    id, sport, format, label, gender, max_ranking, max_players, position,
     entry_players (
       entry_id, member_id, ranking, registered_by, created_at,
       member:club_members ( full_name, gender )

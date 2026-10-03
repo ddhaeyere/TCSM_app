@@ -23,6 +23,7 @@ import {
   isRegistrationOpen,
   registrationClosesAt,
 } from "@/lib/format";
+import { seriesCode } from "@/lib/series";
 import { createClient } from "@/lib/supabase/server";
 import {
   EVENT_SELECT,
@@ -155,7 +156,12 @@ function RegisterCard({
   return (
     <Card>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold">{categoryLabel(category)}</h2>
+        <h2 className="text-lg font-semibold">
+          {seriesCode(category) && (
+            <span className="mr-2 text-club-700">{seriesCode(category)}</span>
+          )}
+          {categoryLabel(category)}
+        </h2>
         <span className="text-sm text-stone-600">
           {plural(category.entry_players.length, "speler", "spelers")}
           {doubles && ` · ${plural(teams.length, "team", "teams")}`}

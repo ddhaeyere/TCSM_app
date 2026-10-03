@@ -6,7 +6,7 @@ import { isOrganiser } from "@/lib/auth";
 import { groupEntries, type Entry } from "@/lib/entries";
 import { plural, sportLabel } from "@/lib/format";
 import { memberRanking } from "@/lib/rankings";
-import { compareSeries, rankingLabel, seriesName } from "@/lib/series";
+import { rankingLabel, seriesCode, seriesProblem, type SeriesPlayer } from "@/lib/series";
 import type {
   Category,
   ClubEvent,
@@ -18,13 +18,26 @@ import type {
 
 export const SPORTS: Sport[] = ["tennis", "padel"];
 
-// Members who are not in this category yet.
+function asPlayer(m: ClubMember, category: Category): SeriesPlayer {
+  return {
+    full_name: m.full_name,
+    gender: m.gender,
+    ranking: memberRanking(m, category.sport, category.format),
+  };
+}
+
+// Members who are not in this category yet and fit its series, alone or
+// together with the given teammate.
 export function availableMembers(
   category: Category,
   members: ClubMember[],
+  teammate?: ClubMember,
 ): ClubMember[] {
   const taken = new Set(category.entry_players.map((p) => p.member_id));
-  return members.filter((m) => !taken.has(m.id));
+  const team = teammate ? [asPlayer(teammate, category)] : [];
+  return members.filter(
+    (m) => !taken.has(m.id) && seriesProblem(category, [...team, asPlayer(m, category)]) === null,
+  );
 }
 
 export function memberOption(category: Category) {
@@ -68,27 +81,17 @@ export function EntriesTable({
   // Event management: organisers can also split teams.
   manage?: boolean;
 }) {
-  const rows: Row[] = categories.flatMap((category) =>
-    groupEntries(category).map((entry) => ({
-      category,
-      entry,
-      series: seriesName(
-        category.sport,
-        category.format,
-        entry.players.map((p) => ({
-          gender: p.member?.gender ?? null,
-          ranking: p.ranking,
-        })),
-      ),
-    })),
-  );
-  // Per category, by series; groupEntries keeps sign-up order and sort is
-  // stable, so that order stays within a series.
-  rows.sort(
-    (a, b) =>
-      a.category.position - b.category.position ||
-      compareSeries(a.series, b.series),
-  );
+  // Per series, in the order the organiser added them; groupEntries keeps
+  // sign-up order within a series.
+  const rows: Row[] = [...categories]
+    .sort((a, b) => a.position - b.position)
+    .flatMap((category) =>
+      groupEntries(category).map((entry) => ({
+        category,
+        entry,
+        series: seriesCode(category) ?? category.label,
+      })),
+    );
   const hasDoubles = categories.some((c) => c.format === "doubles");
 
   // Who may unregister a player: the player, whoever registered them, and organisers.
@@ -138,7 +141,8 @@ export function EntriesTable({
   const partnerCell = (row: Row) => {
     if (row.entry.kind === "team") return playerCell(row.entry.players[1], row);
     if (row.entry.kind !== "looking") return null;
-    const available = availableMembers(row.category, members);
+    const first = members.find((m) => m.id === row.entry.players[0].member_id);
+    const available = availableMembers(row.category, members, first);
     return (
       <div>
         <span className="text-amber-700 italic">Zoekt een partner</span>
