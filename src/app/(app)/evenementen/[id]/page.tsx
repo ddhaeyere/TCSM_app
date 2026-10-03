@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { addPartner, registerForCategory, withdrawRegistration } from "@/app/actions/registrations";
+import {
+  addPartner,
+  registerForCategory,
+  withdrawRegistration,
+} from "@/app/actions/registrations";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Card, Field, inputClass } from "@/components/ui";
-import { getCurrentMember, isOrganiser, requireApprovedProfile } from "@/lib/auth";
+import {
+  getCurrentMember,
+  isOrganiser,
+  requireApprovedProfile,
+} from "@/lib/auth";
 import { groupEntries, placesLeft, type Entry } from "@/lib/entries";
 import {
   categoryLabel,
@@ -12,8 +20,10 @@ import {
   formatDateTime,
   isRegistrationOpen,
   registrationClosesAt,
+  sportLabel,
 } from "@/lib/format";
 import { memberRanking } from "@/lib/rankings";
+import { compareSeries, rankingLabel, seriesName } from "@/lib/series";
 import { createClient } from "@/lib/supabase/server";
 import {
   EVENT_SELECT,
@@ -23,27 +33,39 @@ import {
   type ClubMember,
   type EntryPlayer,
   type Profile,
+  type Sport,
 } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Evenement" };
 
-export default async function EventPage({ params }: PageProps<"/evenementen/[id]">) {
+const SPORTS: Sport[] = ["tennis", "padel"];
+
+export default async function EventPage({
+  params,
+}: PageProps<"/evenementen/[id]">) {
   const { id } = await params;
   const profile = await requireApprovedProfile();
   const me = await getCurrentMember();
   const supabase = await createClient();
 
-  const [{ data }, { data: members }] = await Promise.all([
+  const [{ data }, { data: memberRows }] = await Promise.all([
     supabase.from("events").select(EVENT_SELECT).eq("id", id).maybeSingle(),
-    supabase.from("club_members").select(MEMBER_COLUMNS).order("last_name").order("first_name"),
+    supabase
+      .from("club_members")
+      .select(MEMBER_COLUMNS)
+      .order("last_name")
+      .order("first_name"),
   ]);
   if (!data) notFound();
 
   const event = data as unknown as ClubEvent;
+  const members = (memberRows ?? []) as ClubMember[];
   const open = isRegistrationOpen(event);
   // Admins keep registering members after the deadline.
   const canRegister = open || isOrganiser(profile);
-  const categories = [...event.event_categories].sort((a, b) => a.position - b.position);
+  const categories = [...event.event_categories].sort(
+    (a, b) => a.position - b.position,
+  );
 
   return (
     <>
@@ -65,7 +87,9 @@ export default async function EventPage({ params }: PageProps<"/evenementen/[id]
               : "De inschrijvingen zijn gesloten."}
         </p>
         {event.description && (
-          <p className="mt-3 whitespace-pre-line text-stone-800">{event.description}</p>
+          <p className="mt-3 whitespace-pre-line text-stone-800">
+            {event.description}
+          </p>
         )}
         {isOrganiser(profile) && (
           <Link
@@ -78,14 +102,32 @@ export default async function EventPage({ params }: PageProps<"/evenementen/[id]
       </div>
 
       <div className="space-y-4">
+        {SPORTS.map((sport) => {
+          const ofSport = categories.filter((c) => c.sport === sport);
+          return (
+            ofSport.length > 0 && (
+              <EntriesTable
+                key={sport}
+                sport={sport}
+                event={event}
+                categories={ofSport}
+                profile={profile}
+                me={me}
+                members={members}
+                open={canRegister}
+              />
+            )
+          );
+        })}
+
+        {canRegister && <h2 className="pt-2 text-xl font-bold">Inschrijven</h2>}
         {categories.map((category) => (
-          <CategoryCard
+          <RegisterCard
             key={category.id}
             event={event}
             category={category}
-            profile={profile}
             me={me}
-            members={(members ?? []) as ClubMember[]}
+            members={members}
             open={canRegister}
           />
         ))}
@@ -94,23 +136,37 @@ export default async function EventPage({ params }: PageProps<"/evenementen/[id]
   );
 }
 
-function withRanking(player: EntryPlayer | undefined): string {
-  if (!player) return "";
-  const name = player.member?.full_name ?? "Onbekend";
-  return player.ranking ? `${name} (${player.ranking})` : name;
+// Members who are not in this category yet.
+function availableMembers(
+  category: Category,
+  members: ClubMember[],
+): ClubMember[] {
+  const taken = new Set(category.entry_players.map((p) => p.member_id));
+  return members.filter((m) => !taken.has(m.id));
 }
 
-function CategoryCard({
+function memberOption(category: Category) {
+  return function MemberOption(m: ClubMember) {
+    const ranking = memberRanking(m, category.sport, category.format);
+    return (
+      <option key={m.id} value={m.id}>
+        {ranking
+          ? `${m.full_name} (${rankingLabel(category.sport, ranking)})`
+          : m.full_name}
+      </option>
+    );
+  };
+}
+
+function RegisterCard({
   event,
   category,
-  profile,
   me,
   members,
   open,
 }: {
   event: ClubEvent;
   category: Category;
-  profile: Profile;
   me: ClubMember | null;
   members: ClubMember[];
   open: boolean;
@@ -118,48 +174,11 @@ function CategoryCard({
   const entries = groupEntries(category);
   const left = placesLeft(category);
   const doubles = category.format === "doubles";
-  const mine = me && entries.find((e) => e.players.some((p) => p.member_id === me.id));
-
+  const mine =
+    me && entries.find((e) => e.players.some((p) => p.member_id === me.id));
   const teams = entries.filter((e) => e.kind === "team");
-  const looking = entries.filter((e) => e.kind === "looking");
-  const singles = entries.filter((e) => e.kind === "single");
-
-  // Members who are not in this category yet, with their ranking for it.
-  const taken = new Set(category.entry_players.map((p) => p.member_id));
-  const available = members.filter((m) => !taken.has(m.id));
-  const option = (m: ClubMember) => {
-    const ranking = memberRanking(m, category.sport, category.format);
-    return (
-      <option key={m.id} value={m.id}>
-        {ranking ? `${m.full_name} (${ranking})` : m.full_name}
-      </option>
-    );
-  };
-
-  // Who may unregister a player: the player, whoever registered them, and organisers.
-  const canWithdraw = (p: EntryPlayer) =>
-    open &&
-    (isOrganiser(profile) || p.registered_by === profile.id || (me !== null && p.member_id === me.id));
-
-  const playerLine = (p: EntryPlayer | undefined, entry: Entry) =>
-    p && (
-      <span className="inline-flex items-center gap-1">
-        {withRanking(p)}
-        {canWithdraw(p) && (
-          <ActionForm action={withdrawRegistration} className="inline">
-            <input type="hidden" name="event_id" value={event.id} />
-            <input type="hidden" name="entry_id" value={entry.id} />
-            <input type="hidden" name="member_id" value={p.member_id} />
-            <SubmitButton
-              variant="link"
-              confirm={`${p.member?.full_name ?? "Deze speler"} uitschrijven?`}
-            >
-              uitschrijven
-            </SubmitButton>
-          </ActionForm>
-        )}
-      </span>
-    );
+  const available = availableMembers(category, members);
+  const option = memberOption(category);
 
   return (
     <Card>
@@ -168,7 +187,8 @@ function CategoryCard({
         <span className="text-sm text-stone-600">
           {plural(category.entry_players.length, "speler", "spelers")}
           {doubles && ` · ${plural(teams.length, "team", "teams")}`}
-          {left !== null && ` · ${left === 0 ? "volzet" : `nog ${left} plaatsen`}`}
+          {left !== null &&
+            ` · ${left === 0 ? "volzet" : `nog ${left} plaatsen`}`}
         </span>
       </div>
 
@@ -215,64 +235,169 @@ function CategoryCard({
           <SubmitButton>Inschrijven</SubmitButton>
         </ActionForm>
       )}
+    </Card>
+  );
+}
 
-      {/* Who is in */}
-      {entries.length === 0 ? (
+interface Row {
+  category: Category;
+  entry: Entry;
+  series: string | null;
+}
+
+// One table per sport: a line per team (or singles player) with the series
+// it plays in and each player's ranking.
+function EntriesTable({
+  sport,
+  event,
+  categories,
+  profile,
+  me,
+  members,
+  open,
+}: {
+  sport: Sport;
+  event: ClubEvent;
+  categories: Category[];
+  profile: Profile;
+  me: ClubMember | null;
+  members: ClubMember[];
+  open: boolean;
+}) {
+  const rows: Row[] = categories.flatMap((category) =>
+    groupEntries(category).map((entry) => ({
+      category,
+      entry,
+      series: seriesName(
+        category.sport,
+        category.format,
+        entry.players.map((p) => ({
+          gender: p.member?.gender ?? null,
+          ranking: p.ranking,
+        })),
+      ),
+    })),
+  );
+  // Per category, by series; groupEntries keeps sign-up order and sort is
+  // stable, so that order stays within a series.
+  rows.sort(
+    (a, b) =>
+      a.category.position - b.category.position ||
+      compareSeries(a.series, b.series),
+  );
+  const hasDoubles = categories.some((c) => c.format === "doubles");
+
+  // Who may unregister a player: the player, whoever registered them, and organisers.
+  const canWithdraw = (p: EntryPlayer) =>
+    open &&
+    (isOrganiser(profile) ||
+      p.registered_by === profile.id ||
+      (me !== null && p.member_id === me.id));
+
+  // Name on the first line; ranking and the withdraw link below it.
+  const playerCell = (p: EntryPlayer, row: Row) => (
+    <div>
+      <div
+        className={me && p.member_id === me.id ? "font-semibold" : undefined}
+      >
+        {p.member?.full_name ?? "Onbekend"}
+      </div>
+      <div className="text-xs text-stone-500">
+        {rankingLabel(sport, p.ranking) || "geen klassement"}
+        {canWithdraw(p) && (
+          <ActionForm action={withdrawRegistration} className="inline">
+            <input type="hidden" name="event_id" value={event.id} />
+            <input type="hidden" name="entry_id" value={row.entry.id} />
+            <input type="hidden" name="member_id" value={p.member_id} />
+            {" · "}
+            <SubmitButton
+              variant="link"
+              confirm={`${p.member?.full_name ?? "Deze speler"} uitschrijven?`}
+            >
+              uitschrijven
+            </SubmitButton>
+          </ActionForm>
+        )}
+      </div>
+    </div>
+  );
+
+  const partnerCell = (row: Row) => {
+    if (row.entry.kind === "team") return playerCell(row.entry.players[1], row);
+    if (row.entry.kind !== "looking") return null;
+    const available = availableMembers(row.category, members);
+    return (
+      <div>
+        <span className="text-amber-700 italic">Zoekt een partner</span>
+        {open && available.length > 0 && (
+          <ActionForm action={addPartner} className="mt-1 space-y-1">
+            <input type="hidden" name="event_id" value={event.id} />
+            <input type="hidden" name="entry_id" value={row.entry.id} />
+            <select
+              name="member_id"
+              defaultValue=""
+              required
+              aria-label="Partner"
+              className={`${inputClass} mt-0 min-w-0 py-1 text-sm`}
+            >
+              <option value="" disabled>
+                Kies een partner
+              </option>
+              {available.map(memberOption(row.category))}
+            </select>
+            <SubmitButton variant="secondary">Toevoegen</SubmitButton>
+          </ActionForm>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-lg font-semibold">{sportLabel(sport)}</h2>
+        <span className="text-sm text-stone-600">
+          {plural(
+            rows.length,
+            hasDoubles ? "inschrijving" : "speler",
+            hasDoubles ? "inschrijvingen" : "spelers",
+          )}
+        </span>
+      </div>
+
+      {rows.length === 0 ? (
         <p className="mt-3 text-sm text-stone-600">Nog niemand ingeschreven.</p>
       ) : (
-        <div className="mt-4 space-y-3 text-sm">
-          {singles.length > 0 && (
-            <ol className="list-inside list-decimal space-y-1">
-              {singles.map((e) => (
-                <li key={e.id}>{playerLine(e.players[0], e)}</li>
+        <div className="mt-3">
+          <table className="w-full table-fixed text-left text-sm">
+            <thead>
+              <tr className="border-b border-stone-200 text-xs tracking-wide text-stone-500 uppercase">
+                <th className="w-16 py-2 pr-2 font-medium">Reeks</th>
+                <th className="py-2 pr-3 font-medium">
+                  {hasDoubles ? "Speler 1" : "Speler"}
+                </th>
+                {hasDoubles && <th className="py-2 font-medium">Speler 2</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr
+                  key={row.entry.id}
+                  className={`border-b border-stone-100 align-top last:border-0 ${
+                    row.entry.kind === "looking" ? "bg-amber-50" : ""
+                  }`}
+                >
+                  <td className="py-2 pr-2 font-semibold break-words text-club-700">
+                    {row.series ?? "–"}
+                  </td>
+                  <td className="py-2 pr-3">
+                    {playerCell(row.entry.players[0], row)}
+                  </td>
+                  {hasDoubles && <td className="py-2">{partnerCell(row)}</td>}
+                </tr>
               ))}
-            </ol>
-          )}
-          {teams.length > 0 && (
-            <div>
-              <h3 className="mb-1 font-medium text-stone-700">Teams</h3>
-              <ul className="space-y-1">
-                {teams.map((e) => (
-                  <li key={e.id} className="flex flex-wrap items-center gap-x-2">
-                    {playerLine(e.players[0], e)}
-                    <span>&</span>
-                    {playerLine(e.players[1], e)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {looking.length > 0 && (
-            <div>
-              <h3 className="mb-1 font-medium text-stone-700">Zoekt nog een partner</h3>
-              <ul className="space-y-2">
-                {looking.map((e) => (
-                  <li key={e.id} className="rounded-lg bg-amber-50 p-2">
-                    {playerLine(e.players[0], e)}
-                    {open && available.length > 0 && (
-                      <ActionForm action={addPartner} className="mt-1 flex flex-wrap items-center gap-2">
-                        <input type="hidden" name="event_id" value={event.id} />
-                        <input type="hidden" name="entry_id" value={e.id} />
-                        <select
-                          name="member_id"
-                          defaultValue=""
-                          required
-                          aria-label="Partner"
-                          className={`${inputClass} mt-0 w-auto min-w-48 flex-1 py-1.5 text-sm`}
-                        >
-                          <option value="" disabled>
-                            Kies een partner
-                          </option>
-                          {available.map(option)}
-                        </select>
-                        <SubmitButton variant="secondary">Partner toevoegen</SubmitButton>
-                      </ActionForm>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+            </tbody>
+          </table>
         </div>
       )}
     </Card>

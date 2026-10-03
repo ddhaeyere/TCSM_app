@@ -33,7 +33,7 @@ export interface EntryPlayer {
   ranking: string | null;
   registered_by: string | null;
   created_at: string;
-  member: { full_name: string } | null;
+  member: { full_name: string; gender: Gender | null } | null;
 }
 
 export interface Category {
@@ -64,7 +64,7 @@ export const EVENT_SELECT = `
     id, sport, format, label, max_players, position,
     entry_players (
       entry_id, member_id, ranking, registered_by, created_at,
-      member:club_members ( full_name )
+      member:club_members ( full_name, gender )
     )
   )
 `;
