@@ -21,6 +21,7 @@ export async function updateAccount(_: ActionState, formData: FormData): Promise
   if (error) return { error: error.message };
 
   revalidatePath("/beheer/accounts");
+  revalidatePath("/beheer/leden", "layout");
   revalidatePath("/beheer");
-  return {};
+  return { message: "Opgeslagen." };
 }

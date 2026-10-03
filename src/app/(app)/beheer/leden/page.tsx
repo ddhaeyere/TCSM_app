@@ -3,15 +3,23 @@ import Link from "next/link";
 import { Badge, Card, PageTitle } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import type { ClubMember } from "@/lib/types";
+import type { ClubMember, UserRole } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Ledenlijst" };
 
 export default async function MemberListPage() {
   await requireAdmin();
   const supabase = await createClient();
-  const { data } = await supabase.rpc("admin_list_members");
+  const [{ data }, { data: accounts }] = await Promise.all([
+    supabase.rpc("admin_list_members"),
+    supabase.rpc("admin_list_profiles"),
+  ]);
   const members = (data ?? []) as (ClubMember & { email: string | null })[];
+  const admins = new Set(
+    ((accounts ?? []) as { id: string; role: UserRole }[])
+      .filter((a) => a.role !== "member")
+      .map((a) => a.id),
+  );
 
   return (
     <>
@@ -50,7 +58,11 @@ export default async function MemberListPage() {
                   Enkel {m.tennis_singles_ranking ?? "–"} · Dubbel {m.tennis_doubles_ranking ?? "–"} ·
                   Padel {m.padel_ranking ?? "–"}
                 </span>
-                {m.profile_id && <Badge tone="green">heeft account</Badge>}
+                {m.profile_id && admins.has(m.profile_id) ? (
+                  <Badge tone="club">beheerder</Badge>
+                ) : (
+                  m.profile_id && <Badge tone="green">heeft account</Badge>
+                )}
               </Link>
             </li>
           ))}
